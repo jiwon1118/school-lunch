@@ -2,19 +2,32 @@ import os
 import requests
 import pandas as pd
 import pyarrow
+from school_code_jiwon import list2df, fetch_all_pages
 
 KEY="261957623ead45779884d5b6e27385cf"
 BASE_URL=f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={KEY}&Type=json"
 
-def call_api(region_code, dt, pIndex=1, pSize=1000):
+def call_api(region_code, dt, pIndex=1):
+    # 학교 코드 데이터 가져오기
+    df_sc = pd.read_json("temp/school_code.json")
+    school_codes = df_sc[df_sc["ATPT_OFCDC_SC_CODE"] == region_code]["SD_SCHUL_CODE"].tolist()
     
-    url = f"{BASE_URL}&pIndex={pIndex}&pSize={pSize}&ATPT_OFCDC_SC_CODE={region_code}&MMEAL_SC_CODE=2&MLSV_YMD={dt}"
-    
-    res = requests.get(url).json()
-    rows = res['mealServiceDietInfo'][1]['row']
-    return rows
+    all_rows = []
 
-def list2df(data: list):
+    for school_code in school_codes:
+        url = f"{BASE_URL}&pIndex={pIndex}&ATPT_OFCDC_SC_CODE={region_code}&SD_SCHUL_CODE={school_code}&MMEAL_SC_CODE=2&MLSV_YMD={dt}"
+        
+        try:
+            res = requests.get(url).json()
+            rows = res['mealServiceDietInfo'][1]['row']
+            all_rows.extend(rows)
+        except (KeyError, IndexError):
+            continue  # 해당 학교에 데이터가 없으면 패스
+
+    return all_rows
+
+
+def list2df_menu(data: list):
     df = pd.DataFrame(data)
 
     # 필요한 컬럼만 유지
@@ -58,13 +71,16 @@ def list2df(data: list):
 
     df["MENU_LIST"] = df["DDISH_NM"].apply(parse_menu_list)
 
-    # 가장 긴 메뉴 개수만큼 컬럼 분리
-    max_menu_len = df["MENU_LIST"].apply(len).max()
-    for i in range(max_menu_len):
-        df[f"menu_{i+1}"] = df["MENU_LIST"].apply(lambda x: x[i] if i < len(x) else None)
+    # # 가장 긴 메뉴 개수만큼 컬럼 분리
+    # max_menu_len = df["MENU_LIST"].apply(len).max()
+    # for i in range(max_menu_len):
+    #     df[f"menu_{i+1}"] = df["MENU_LIST"].apply(lambda x: x[i] if i < len(x) else None)
 
     # 정리: 원본 텍스트 컬럼 제거
     df.drop(columns=["CAL_INFO", "NTR_INFO", "DDISH_NM", "MENU_LIST"], inplace=True)
 
     return df
+
+df = list2df(call_api("B10", "202503"))
+print(df.head())
 
