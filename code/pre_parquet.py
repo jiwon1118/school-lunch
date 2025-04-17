@@ -4,9 +4,8 @@ import pandas as pd
 import re
 import pyarrow
 
-
+df = pd.read_parquet("~/code/school-lunch/temp/example.parquet")
 def pre_parquet(df):
-    #df = pd.read_parquet("temp/example.parquet")
 
     # 필요한 컬럼만 유지
     keep_cols = [
@@ -19,7 +18,7 @@ def pre_parquet(df):
         "CAL_INFO",           # 칼로리 정보
         "NTR_INFO",           # 영양소 정보
         "MLSV_FGR",           # 급식 인원 수
-        "LV"     # 학교 종류
+        "LV"                  # 학교 종류
     ]
     df = df[keep_cols]
     
@@ -49,7 +48,7 @@ def pre_parquet(df):
         except:
             return {}
 
-    df["NUTRITION_DICT"] = df["NTR_INFO"].apply(parse_nutrition)
+    df["NUT_DICT"] = df["NTR_INFO"].apply(parse_nutrition)
 
     # 메뉴 파싱 및 컬럼화
     def parse_menu_list(dish_text):
@@ -78,3 +77,5 @@ def pre_parquet(df):
     
     rdf.to_parquet("~/code/school-lunch/temp/test.parquet", index=False)
     return rdf
+
+pre_parquet(df)

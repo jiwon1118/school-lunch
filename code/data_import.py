@@ -10,10 +10,10 @@ with open('/home/ubuntu/code/school-lunch/temp/school_code.json', 'r', encoding=
 df = pd.DataFrame(data)
 
 # 필요한 컬럼만 추출
-school_df = df[['ATPT_OFCDC_SC_CODE', 'SD_SCHUL_CODE']].copy()
+school_df = df[['ATPT_OFCDC_SC_CODE', 'SD_SCHUL_CODE', 'SCHUL_KND_SC_NM']].copy()
 
 # 컬럼명 한글로 변경 (선택)
-school_df.columns = ['지역코드', '학교코드']
+school_df.columns = ['지역코드', '학교코드', '학교구분']
 
 
 # 환경설정
@@ -59,10 +59,16 @@ for school in SCH_CODE:
         page += 1
 
 
-    
+# 학교 구분 추가
+school_merge_df = school_df[['학교코드', '학교구분']]
+
+# 병합
+all_df = all_df.merge(school_merge_df, how='left', left_on='SD_SCHUL_CODE', right_on='학교코드')
+# 'LV' 컬럼으로 이름 변경
+all_df.rename(columns={'학교구분': 'LV'}, inplace=True)
+
 
 # parquet 저장
-
 save_path = '/home/ubuntu/code/school-lunch/temp/example.parquet'
 
 # Parquet으로 저장 (압축 옵션 선택 가능: snappy, gzip 등)
