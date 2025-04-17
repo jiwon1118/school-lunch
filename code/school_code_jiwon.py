@@ -39,6 +39,3 @@ def list2df(data: list):
     # JSON 파일로 저장 (indent로 예쁘게, orient는 records 형식)
     df.to_json(output_path, orient="records", force_ascii=False, indent=2)
     return df
-
-df = list2df(fetch_all_pages())
-print(df.head())
