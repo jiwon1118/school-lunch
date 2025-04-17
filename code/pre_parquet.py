@@ -18,7 +18,8 @@ def pre_parquet(df):
         "DDISH_NM",           # 급식 메뉴
         "CAL_INFO",           # 칼로리 정보
         "NTR_INFO",           # 영양소 정보
-        "MLSV_FGR"            # 급식 인원 수
+        "MLSV_FGR",           # 급식 인원 수
+        "LV"     # 학교 종류
     ]
     df = df[keep_cols]
     
@@ -30,7 +31,7 @@ def pre_parquet(df):
         "ATPT_OFCDC_SC_NM": "REG_N",    # 교육청 이름
         "SD_SCHUL_CODE": "SCH_C",       # 학교 코드
         "SCHUL_NM": "SCH_N",            # 학교 이름
-        "MLSV_FGR": "COUNT"             # 급식 인원 수
+        "MLSV_FGR": "COUNT",            # 급식 인원 수
         })
 
 
@@ -77,8 +78,3 @@ def pre_parquet(df):
     
     rdf.to_parquet("~/code/school-lunch/temp/test.parquet", index=False)
     return rdf
-
-
-df = pd.read_parquet("/home/jiwon/code/school-lunch/temp/example.parquet")
-fdf = pre_parquet(df)
-print(fdf.head(1))
