@@ -35,7 +35,7 @@ def list2df(data: list):
     ]
     df = df[keep_cols]
     
-    output_path = "/home/jiwon/temp/school_code.json"
+    output_path = "~/code/school-lunch/temp/school_code.json"
     # JSON 파일로 저장 (indent로 예쁘게, orient는 records 형식)
     df.to_json(output_path, orient="records", force_ascii=False, indent=2)
     return df
