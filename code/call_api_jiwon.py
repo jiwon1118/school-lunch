@@ -82,5 +82,5 @@ def list2df_menu(data: list):
     return df
 
 df = list2df(call_api("B10", "202503"))
-print(df.head())
+print(df.head(3))
 
