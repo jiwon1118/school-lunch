@@ -1,6 +1,6 @@
-import os
 import requests
 import pandas as pd
+from google.cloud import storage
 
 KEY="261957623ead45779884d5b6e27385cf"
 URL=f"https://open.neis.go.kr/hub/schoolInfo?KEY={KEY}&Type=json"
@@ -24,6 +24,19 @@ def fetch_all_pages(pSize=1000):
 
     return all_rows
 
+def upload_json_to_gcs(df, bucket_name, blob_name):
+    # JSON 문자열로 변환
+    json_data = df.to_json(orient="records", force_ascii=False, indent=2)
+
+    # GCS 클라이언트
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+
+    # 업로드
+    blob.upload_from_string(json_data, content_type="application/json")
+    print(f"✅ Uploaded to gs://{bucket_name}/{blob_name}")
+    
 def list2df(data: list):
     df = pd.DataFrame(data)
 
@@ -34,8 +47,10 @@ def list2df(data: list):
         "SCHUL_KND_SC_NM"     # 학교 종류 명
     ]
     df = df[keep_cols]
-    
-    output_path = "~/code/school-lunch/temp/school_code.json"
-    # JSON 파일로 저장 (indent로 예쁘게, orient는 records 형식)
-    df.to_json(output_path, orient="records", force_ascii=False, indent=2)
+   
+    # GCS에 업로드
+    upload_json_to_gcs(df, "school-lunch-bucket", "lunch_menu/school_data.json")
     return df
+
+
+list2df(fetch_all_pages())
