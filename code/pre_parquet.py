@@ -75,7 +75,7 @@ def pre_parquet(df):
     # 정리: 원본 텍스트 컬럼 제거
     rdf.drop(columns=["MLSV_YMD", "CAL_INFO", "NTR_INFO", "DDISH_NM", "MENU_LIST"], inplace=True)
     
-    rdf.to_parquet("~/code/school-lunch/temp/test.parquet", index=False)
+    rdf.to_parquet("~/code/school-lunch/temp/test2.parquet", index=False)
     return rdf
 
 pre_parquet(df)

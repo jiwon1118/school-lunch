@@ -18,3 +18,8 @@ build-backend = "pdm.backend"
 
 [tool.pdm]
 distribution = true
+
+[dependency-groups]
+dev = [
+    "pyspark>=3.5.5",
+]
