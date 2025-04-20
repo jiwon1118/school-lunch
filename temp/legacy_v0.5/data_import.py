@@ -35,27 +35,27 @@ all_df = pd.DataFrame()
 ymd = DATE.strftime('%Y%m')
 page = 1
 
-schema = StructType([
-    StructField("ATPT_OFCDC_SC_CODE", StringType(), True),
-    StructField("ATPT_OFCDC_SC_NM", StringType(), True),
-    StructField("SD_SCHUL_CODE", StringType(), True),
-    StructField("SCHUL_NM", StringType(), True),
-    StructField("MMEAL_SC_CODE", StringType(), True),
-    StructField("MMEAL_SC_NM", StringType(), True),
-    StructField("MLSV_YMD", StringType(), True),
-    StructField("MLSV_FGR", FloatType(), True),
-    StructField("DDISH_NM", StringType(), True),
-    StructField("ORPLC_INFO", StringType(), True),
-    StructField("CAL_INFO", StringType(), True),
-    StructField("NTR_INFO", StringType(), True),
-    StructField("LOAD_DTM", StringType(), True),
-])
+# schema = StructType([
+#     StructField("ATPT_OFCDC_SC_CODE", StringType(), True),
+#     StructField("ATPT_OFCDC_SC_NM", StringType(), True),
+#     StructField("SD_SCHUL_CODE", StringType(), True),
+#     StructField("SCHUL_NM", StringType(), True),
+#     StructField("MMEAL_SC_CODE", StringType(), True),
+#     StructField("MMEAL_SC_NM", StringType(), True),
+#     StructField("MLSV_YMD", StringType(), True),
+#     StructField("MLSV_FGR", FloatType(), True),
+#     StructField("DDISH_NM", StringType(), True),
+#     StructField("ORPLC_INFO", StringType(), True),
+#     StructField("CAL_INFO", StringType(), True),
+#     StructField("NTR_INFO", StringType(), True),
+#     StructField("LOAD_DTM", StringType(), True),
+# ])
 
-NEEDED_FIELDS = [
-    "ATPT_OFCDC_SC_CODE", "ATPT_OFCDC_SC_NM", "SD_SCHUL_CODE", "SCHUL_NM",
-    "MMEAL_SC_CODE", "MMEAL_SC_NM", "MLSV_YMD", "MLSV_FGR",
-    "DDISH_NM", "ORPLC_INFO", "CAL_INFO", "NTR_INFO", "LOAD_DTM"
-]
+# NEEDED_FIELDS = [
+#     "ATPT_OFCDC_SC_CODE", "ATPT_OFCDC_SC_NM", "SD_SCHUL_CODE", "SCHUL_NM",
+#     "MMEAL_SC_CODE", "MMEAL_SC_NM", "MLSV_YMD", "MLSV_FGR",
+#     "DDISH_NM", "ORPLC_INFO", "CAL_INFO", "NTR_INFO", "LOAD_DTM"
+# ]
 
 url_list = []
 for school in SCH_CODE:

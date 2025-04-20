@@ -1,20 +1,31 @@
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from google.cloud import storage
 import pyarrow
 import json
 import re
 import tempfile
 import os
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, FloatType
+import sys
+
+webhook_url = 'https://discordapp.com/api/webhooks/1362586291937612107/gXsqabc7FDZLsmEk23TwXINH89Q1m9zZb9pDevUEFopdePsjcyCEwiBYIIcwloSrKrnz'
+DATE = sys.argv[1]
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/home/ubuntu/.ssh/shining-reality-455501-q0-7b280468bf04.json"
+
+from google.cloud import storage
+
 
 # gcs에서 학교 코드 json 파일을 읽어오기
 def load_json_from_gcs(bucket_name: str, blob_name: str):
     client = storage.Client()
+    print(f"Downloading {blob_name} from {bucket_name}")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
 
     json_str = blob.download_as_text(encoding='utf-8')
+    print("Download complete")
     data = json.loads(json_str)
     df = pd.DataFrame(data)
     return df
@@ -27,45 +38,34 @@ def get_api():
     # 컬럼명 한글로 변경 (선택)
     school_df.columns = ['지역코드', '학교코드', '학교구분']
     
+    # SparkSession 생성
+    spark = SparkSession.builder.appName("school-lunch").getOrCreate()
+    
     # 환경설정
     API_KEY = '261957623ead45779884d5b6e27385cf' # 본인 API_KEY 입력
-    EDU_CODE = 'B10'  # 서울 교육청
-    SCH_CODE = school_df[school_df['지역코드'].str.upper() == EDU_CODE]['학교코드']
+    EDU_CODE = school_df['지역코드'].unique()
+    SCH_CODE = []
     BASE_URL = 'https://open.neis.go.kr/hub/mealServiceDietInfo'
-    DATE = datetime(2021, 3, 1)
 
     # 최종 DataFrame
     all_df = pd.DataFrame()
 
     # 👉 날짜 반복
-    ymd = DATE.strftime('%Y%m')
+    ymd = DATE
     page = 1
-    for school in SCH_CODE:
-        params = {
-            'KEY': API_KEY,
-            'Type': 'json',
-            'ATPT_OFCDC_SC_CODE': EDU_CODE,
-            'SD_SCHUL_CODE': school,
-            'MLSV_YMD': ymd,
-            'MMEAL_SC_CODE': 2,
-            'pIndex': page,
-            'pSize': 1000
-        }
-        res = requests.get(BASE_URL, params=params)
-        data = res.json()
-        
-        try:
-            rows = data['mealServiceDietInfo'][1]['row']
-        except (KeyError, IndexError):
-            pass
-
-        df = pd.DataFrame(rows)
-        all_df = pd.concat([all_df, df], ignore_index=True)
-
-        if len(rows) < 1000:
-            pass
-        else:
-            page += 1
+    
+    url_list = []
+    for reg in EDU_CODE:
+        SCH_CODE = school_df[school_df['지역코드'].str.upper() == reg]['학교코드']
+        for school in SCH_CODE:
+            url_list.append(f'https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={reg}&SD_SCHUL_CODE={school}&MLSV_YMD={ymd}&MMEAL_SC_CODE=2&pIndex={page}&pSize=1000')
+    
+    urls = spark.sparkContext.parallelize(url_list, numSlices=20)
+    print(f"총 URL 수: {len(url_list)}")
+    
+    rdd = urls.flatMap(fetch_json)
+    all_df = spark.createDataFrame(rdd)
+    all_df = all_df.toPandas()
         
     # 학교 구분 추가
     school_merge_df = school_df[['학교코드', '학교구분']]
@@ -75,7 +75,29 @@ def get_api():
     # 'LV' 컬럼으로 이름 변경
     all_df.rename(columns={'학교구분': 'LV'}, inplace=True)
     
+    message = {
+    "content": f"전국 {ymd} 데이터 추출 성공"
+    }
+    response = requests.post(webhook_url, data=json.dumps(message), headers={'Content-Type': 'application/json'})
+    print('--------------------------------------------------------------------------------')
+    print("1차 : 데이터 처리 성공")
+    print('--------------------------------------------------------------------------------')
+    
     return all_df
+
+# SPARK처리용 함수
+def fetch_json(url):
+    try:
+        res = requests.get(url)
+        res.raise_for_status()  # HTTP 에러 코드 체크 (4xx, 5xx)
+        data = res.json()
+        if "mealServiceDietInfo" in data and len(data["mealServiceDietInfo"]) > 1:
+            return data["mealServiceDietInfo"][1]["row"]  # ✅ 핵심 데이터 반환
+        else:
+            return []  # 데이터가 없을 경우 빈 리스트
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return []
 
 
 def pre_parquet(df):
@@ -147,6 +169,9 @@ def pre_parquet(df):
 
     # 정리: 원본 텍스트 컬럼 제거
     rdf.drop(columns=["MLSV_YMD", "CAL_INFO", "NTR_INFO", "DDISH_NM", "MENU_LIST"], inplace=True)
+    print('--------------------------------------------------------------------------------')
+    print("2차 : 데이터 전처리 성공")
+    print('--------------------------------------------------------------------------------')
     return rdf
 
 
@@ -171,6 +196,10 @@ def upload_partitioned_parquet_to_gcs(df, bucket_name, base_path):
                 blob = bucket.blob(blob_path)
                 blob.upload_from_filename(local_path)
                 print(f"✅ Uploaded to gs://{bucket_name}/{blob_path}")
+    
+    print('--------------------------------------------------------------------------------')
+    print("3차 : 데이터 업로드 성공")
+    print('--------------------------------------------------------------------------------')
 
 # 메인 실행
 df = get_api()
