@@ -22,7 +22,7 @@ SELECT
   MENU,
   COUNT(*) AS frequency
 FROM
-  `shining-reality-455501-q0.load.school-lunch`
+  `shining-reality-455501-q0.school_lunch.school-lunch`
 WHERE
   SUBSTR(CAST(DATE AS STRING), 1, 4) = '{selected_year}'
   AND MENU NOT LIKE '%밥%'
@@ -73,12 +73,12 @@ prev_year = str(int(selected_year) - 1)
 query = f"""
 WITH current_year_menus AS (
     SELECT DISTINCT MENU AS menu
-    FROM `shining-reality-455501-q0.load.school-lunch`
+    FROM `shining-reality-455501-q0.school_lunch.school-lunch`
     WHERE SUBSTR(CAST(DATE AS STRING), 1, 4) = '{selected_year}'
 ),
 previous_year_menus AS (
     SELECT DISTINCT MENU AS menu
-    FROM `shining-reality-455501-q0.load.school-lunch`
+    FROM `shining-reality-455501-q0.school_lunch.school-lunch`
     WHERE SUBSTR(CAST(DATE AS STRING), 1, 4) = '{prev_year}'
 )
 SELECT menu
