@@ -25,7 +25,7 @@
     },
     {
         "name": "DATE",
-        "type": "DATE"
+        "type": "INTEGER"
     },
     {
         "name": "CAL",

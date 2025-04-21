@@ -8,6 +8,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import gcsfs
+import pyarrow.dataset as ds
 
 DATE = sys.argv[1]
 year = int(DATE[:4])
@@ -18,14 +19,21 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/home/ubuntu/.ssh/shining-realit
 # Spark 세션 시작
 #spark = SparkSession.builder.appName('ChangeDataType').getOrCreate()
 
-gcs_path = f'gs://school-lunch-bucket/lunch_menu/DATE_YEAR={year}/DATE_MONTH={month}/'
+fs = gcsfs.GCSFileSystem()
+gcs_path = f'school-lunch-bucket/lunch_menu/DATE_YEAR={year}/DATE_MONTH={month}'
 
 # Parquet 파일 읽기
-df = pd.read_parquet(gcs_path, engine='pyarrow', filesystem=gcsfs.GCSFileSystem())
+#df = pd.read_parquet(gcs_path, engine='pyarrow', filesystem=gcsfs.GCSFileSystem())
+dataset = ds.dataset(gcs_path, filesystem=fs, format="parquet")
 
 # 컬럼의 데이터 타입을 int32로 변경
 #df = df.withColumn('DATE', col('DATE').cast('int'))
+df = dataset.to_table().to_pandas()
+df['DATE'] = df['DATE'].dt.year * 10000 + df['DATE'].dt.month * 100 + df['DATE'].dt.day
 df['DATE'] = df['DATE'].astype('int32')
+
+if fs.exists(gcs_path):
+    fs.rm(gcs_path, recursive=True)
 
 
 # 변경된 DataFrame을 Parquet 파일로 다시 저장
@@ -33,7 +41,7 @@ df['DATE'] = df['DATE'].astype('int32')
 pq.write_to_dataset(
     table=pa.Table.from_pandas(df),
     root_path=gcs_path,
-    filesystem=gcsfs.GCSFileSystem(),
+    filesystem=fs,
     existing_data_behavior='overwrite_or_ignore'
 )
 
