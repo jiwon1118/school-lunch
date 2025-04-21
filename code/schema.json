@@ -1,0 +1,80 @@
+[
+    {
+        "name": "REG_C",
+        "type": "STRING"
+    },
+    {
+        "name": "REG_N",
+        "type": "STRING"
+    },
+    {
+        "name": "SCH_C",
+        "type": "STRING"
+    },
+    {
+        "name": "SCH_N",
+        "type": "STRING"
+    },
+    {
+        "name": "COUNT",
+        "type": "FLOAT"
+    },
+    {
+        "name": "LV",
+        "type": "STRING"
+    },
+    {
+        "name": "DATE",
+        "type": "INTEGER"
+    },
+    {
+        "name": "CAL",
+        "type": "FLOAT"
+    },
+    {
+        "name": "NUT_DICT",
+        "type": "RECORD",
+        "fields": [
+            {
+                "name": "pro_g",
+                "type": "STRING"
+            },
+            {
+                "name": "riboflav_mg",
+                "type": "STRING"
+            },
+            {
+                "name": "vitaA_RE",
+                "type": "STRING"
+            },
+            {
+                "name": "vitaC_mg",
+                "type": "STRING"
+            },
+            {
+                "name": "fat_g",
+                "type": "STRING"
+            },
+            {
+                "name": "iron_mg",
+                "type": "STRING"
+            },
+            {
+                "name": "cal_mg",
+                "type": "STRING"
+            },
+            {
+                "name": "crab_g",
+                "type": "STRING"
+            },
+            {
+                "name": "thiam_mg",
+                "type": "STRING"
+            }
+        ]
+    },
+    {
+        "name": "MENU",
+        "type": "STRING"
+    }
+]
