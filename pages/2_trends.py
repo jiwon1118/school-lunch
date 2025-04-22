@@ -98,9 +98,6 @@ df = client.query(query).to_dataframe()
 st.dataframe(df)
 
 
-# BigQuery 클라이언트 생성
-client = bigquery.Client()
-
 # 쿼리문
 query = """
 WITH daily_menu AS (
