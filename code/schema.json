@@ -1,0 +1,43 @@
+[
+    {
+        "name": "REG_C",
+        "type": "STRING"
+    },
+    {
+        "name": "REG_N",
+        "type": "STRING"
+    },
+    {
+        "name": "SCH_C",
+        "type": "STRING"
+    },
+    {
+        "name": "SCH_N",
+        "type": "STRING"
+    },
+    {
+        "name": "COUNT",
+        "type": "FLOAT"
+    },
+    {
+        "name": "LV",
+        "type": "STRING"
+    },
+    {
+        "name": "DATE",
+        "type": "INTEGER"
+    },
+    {
+        "name": "CAL",
+        "type": "FLOAT"
+    },
+    {
+        "name": "NUT_DICT",
+        "type": "STRING",
+        "mode": "NULLABLE"
+    },
+    {
+        "name": "MENU",
+        "type": "STRING"
+    }
+]
