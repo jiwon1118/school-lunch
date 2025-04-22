@@ -39,7 +39,7 @@ date_int = int(date_input.strftime('%Y%m%d'))  # 정수로 변환
 # 쿼리 정의
 query = """
     SELECT REG_N, SCH_N, DATE, MENU
-    FROM `shining-reality-455501-q0.load.school-lunch`
+    FROM `shining-reality-455501-q0.school_lunch.school-lunch`
     LIMIT 50
 """
 
@@ -49,7 +49,7 @@ if st.button("🔍 검색"):
         # 쿼리 기본 구조
         base_query = """
             SELECT REG_N, SCH_N, DATE, MENU
-            FROM `shining-reality-455501-q0.load.school-lunch`
+            FROM `shining-reality-455501-q0.school_lunch.school-lunch`
         """
 
         # 조건절 생성
