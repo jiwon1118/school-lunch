@@ -1,19 +1,18 @@
 import streamlit as st
-from google.cloud import storage # gcsfs 사용 시 직접 필요 없을 수 있지만, 남겨둡니다.
+from google.cloud import storage
 import pandas as pd
 import altair as alt
-import gcsfs # Google Cloud Storage (gs://) 경로 사용을 위해 필요
+import gcsfs
 
-### 함수 사용으로 차트별 반복되는 코드를 간소화하고 가독성을 높였음 ###
 
-# Streamlit 페이지 기본 설정
-st.set_page_config(page_title="급식 분석 대시보드", page_icon="🍱", layout="wide") # 레이아웃 wide로 설정
+st.set_page_config(page_title="Lunch", page_icon="🍱")
 st.title("17개 시도별 급식 관련 자료 분석")
-st.write("## 학교알리미 공공데이터 자료를 활용한 17개 시도별 학교급별 집계")
+st.subheader("학교알리미 공공데이터 자료를 활용한 집계")
+st.write(" ")
+
 
 
 # --- 데이터 로드 함수 (GCS에서 파일 읽기) ---
-# Streamlit 앱 성능을 위해 데이터 로드는 캐싱하는 것이 좋습니다.
 @st.cache_data
 def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
@@ -146,9 +145,7 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
             # '전체' 값 계산 및 시각화 데이터프레임 준비
             df_to_plot = pd.DataFrame() # 최종 시각화 데이터프레임을 빈 것으로 시작
 
-            # 사용자가 '전체'를 선택했고, 합계 계산 대상 데이터가 df_process에 있는 경우
-            # present_specific_types_in_data는 이 함수 시작 시 계산된 전체 데이터 기준입니다.
-            # 여기서는 현재 필터링된 df_process 내에 합계 대상이 있는지 확인해야 합니다.
+            # '전체'가 선택된 경우, 개별 타입의 합계/평균을 계산하여 추가
             specific_types_in_processed_data = [
                  item for item in specific_class_types
                  if item in df_process[class_type_col].unique()
@@ -167,10 +164,8 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                         df_total = df_specific_types_only.groupby(province_col)['값'].mean().reset_index()
                         st.info("참고: '전체'는 선택된 개별 학교급 데이터의 **평균**입니다.") # 사용자에게 계산 방식 알림
                     else:
-                        # 다른 차트 (수량 데이터)인 경우, '전체'는 개별 타입 수량의 '합계'로 계산
                         df_total = df_specific_types_only.groupby(province_col)['값'].sum().reset_index()
                         st.info("참고: '전체'는 선택된 개별 학교급 데이터의 **합계**입니다.") # 사용자에게 계산 방식 알림
-                        # 수량 데이터일 경우 합계 계산 방식을 알릴 필요는 없을 수 있습니다. (필요시 st.info 추가)
 
 
                     df_total[class_type_col] = '전체' # 학급구분 컬럼 추가 및 값 설정
@@ -194,9 +189,6 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                 if not df_specific_selected.empty: # 필터링된 개별 타입 데이터가 있는 경우만 합치기
                     df_to_plot = pd.concat([df_to_plot, df_specific_selected], ignore_index=True)
                 else:
-                    # selected_class_types에는 있지만, selected_plot_year와 selected_variable_name 조건 하에서는
-                    # 해당 데이터가 없는 경우입니다. 이미 위에서 경고 메시지로 어느 정도 포함될 수 있습니다.
-                    # 필요하다면 여기서 더 구체적인 경고를 줄 수 있습니다.
                     pass
 
 
@@ -209,31 +201,63 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
             if not df_plot.empty:
                 # 정렬 파라미터 결정 (sort_by_value_checkbox 사용)
                 sort_param = '-y' if sort_by_value_checkbox else 'ascending'
+                
+                # --- Y축 스케일 및 포맷 결정 (차트3 비율 데이터용) ---
+                y_scale = alt.Undefined # 기본 스케일 (Altair 자동 결정)
+                value_format = ',.0f' # 기본 값 포맷 (천 단위 쉼표, 소수점 없음)
 
-                # 차트 생성
-                chart = alt.Chart(df_plot).mark_bar().encode(
-                    x=alt.X(province_col, sort=sort_param, title=province_col),
-                    y=alt.Y('값', type='quantitative', title=selected_variable_name),
-                    color=alt.Color(class_type_col, title=class_type_col), # 학급구분별 색상
-                    column=alt.Column(class_type_col, header=alt.Header(titleOrient="bottom", labelOrient="bottom")), # 학급구분별로 컬럼 분리 (선택 사항, stacked bar 대신)
-                    tooltip=[province_col, class_type_col, alt.Tooltip('값', title=selected_variable_name, format=',.0f')] # 툴팁에 값 포맷팅 추가
-                ).properties(
+                # 현재 차트가 3번이고, 선택된 변수가 비율 변수 목록에 있는지 확인
+                if chart_num == 3 and selected_variable_name in y_axis_variables:
+                    y_scale = alt.Scale(domain=[0, 100]) # Y축 범위를 0 ~ 100으로 고정
+                    value_format = ',.1f' # 비율은 소수점 첫째 자리까지 표시하도록 포맷 변경
+
+                # --- Altair 인코딩 설정 (그룹형 막대 그래프) ---
+                # Y축 인코딩에 결정된 scale과 format 적용
+                y_encoding = alt.Y(
+                    '값',
+                    type='quantitative',
+                    title=selected_variable_name,
+                    scale=y_scale, # 비율 차트일 경우 0-100 스케일 적용
+                    axis=alt.Axis(title=selected_variable_name, format=value_format) # 축 라벨 포맷 적용
+                )
+
+                # 그룹형 막대 그래프를 위한 인코딩 설정
+                chart_encoding = {
+                    # x축은 시도교육청 (메인 카테고리)
+                    "x": alt.X(
+                        province_col,
+                        sort=sort_param,
+                        # 스케일을 명시하지 않아도 Altair가 그룹형 막대에 맞게 조정합니다.
+                        axis=alt.Axis(title=province_col, labels=True) # 축 라벨 표시 확인
+                    ),
+                    # y축 인코딩 (비율 차트일 경우 0-100 스케일, 포맷 포함)
+                    "y": y_encoding, # 위에 정의된 y_encoding 변수 사용
+
+                    # 색상은 학급구분별로 다르게
+                    "color": alt.Color(class_type_col, title=class_type_col),
+
+                    # ***이 부분이 핵심***
+                    # xOffset을 사용하여 동일한 시도교육청 내에서 학급구분별 막대를 옆으로 나란히 배치
+                    "xOffset": alt.XOffset(class_type_col, title=class_type_col),
+
+                    # 툴팁 설정
+                    "tooltip": [
+                        province_col,
+                        class_type_col,
+                        alt.Tooltip('값', title=selected_variable_name, format=value_format) # 값 포맷 적용
+                    ]
+                    # 'column' 인코딩은 그룹형 막대 그래프에는 사용하지 않습니다.
+                }
+                
+
+                # --- 차트 생성 ---
+                # 위에 정의된 chart_encoding 딕셔너리를 사용하여 차트를 생성합니다.
+                chart = alt.Chart(df_plot).mark_bar().encode(**chart_encoding).properties(
                     title=f'{selected_plot_year}년 {selected_variable_name} by {province_col} ({", ".join(selected_class_types)})'
                 ).interactive() # 확대/축소, 팬 기능 활성화
 
-                # 만약 그룹화(color만 사용)된 stacked bar를 원한다면 column 인코딩을 제거합니다.
-                # 예시:
-                # chart = alt.Chart(df_plot).mark_bar().encode(
-                #     x=alt.X(province_col, sort=sort_param, title=province_col),
-                #     y=alt.Y('값', type='quantitative', title=selected_variable_name),
-                #     color=alt.Color(class_type_col, title=class_type_col),
-                #     tooltip=[province_col, class_type_col, alt.Tooltip('값', title=selected_variable_name, format=',.0f')]
-                # ).properties(
-                #     title=f'{selected_plot_year}년 {selected_variable_name} by {province_col} ({", ".join(selected_class_types)})'
-                # ).interactive()
 
-
-                st.altair_chart(chart, use_container_width=True)
+                st.altair_chart(chart, use_container_width=True) # Streamlit 컨테이너 넓이에 맞춤
 
             else:
                 st.warning(f"선택된 조건에 해당하는 최종 시각화 데이터가 없습니다. 필터링 및 계산 결과를 확인해주세요.")
@@ -293,10 +317,6 @@ render_chart_section(
     class_type_options=['전체', '초등학교', '중학교', '고등학교'], # 차트3 데이터에 맞는 선택 옵션 목록으로 수정 필요 (차트2와 동일할 가능성 높음)
     title_text="시도교육청별 연도별 급식비 부담 비율" # 차트 제목 텍스트
 )
-
-
-st.write("---")
-st.write("이 앱은 Streamlit, Pandas, Altair, gcsfs를 사용하며, 지정된 GCS 경로 파일을 읽어 데이터를 시각화합니다.")
 
 
 
