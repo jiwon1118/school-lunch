@@ -3,35 +3,24 @@ from google.cloud import storage # gcsfs 사용 시 직접 필요 없을 수 있
 import pandas as pd
 import altair as alt
 import gcsfs # Google Cloud Storage (gs://) 경로 사용을 위해 필요
-import json
-from google.oauth2 import service_account
-
-credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
-
 
 ### 함수 사용으로 차트별 반복되는 코드를 간소화하고 가독성을 높였음 ###
 ### 연도 선택 후 학교급별 그룹형 차트 표시 방식에서 학교급 선택 후 연도별 그룹형 차트 표시로 수정하였음 ###
 
 # Streamlit 페이지 기본 설정
-st.set_page_config(page_title="Lunch", page_icon="🍱")
-st.title("17개 시도별 급식 관련 자료 분석")
-st.subheader("학교알리미 공공데이터 자료를 활용한 집계")
-st.write(" ")
+st.set_page_config(page_title="급식 분석 대시보드", page_icon="🍱", layout="wide") # 레이아웃 wide로 설정
+st.title("📊17개 시도별 급식 관련 데이터 집계")
+st.write("## 학교알리미 공공데이터 자료를 활용한 17개 시도별 학교급별 집계")
+
 
 # --- 데이터 로드 함수 (GCS에서 파일 읽기) ---
+# Streamlit 앱 성능을 위해 데이터 로드는 캐싱하는 것이 좋습니다.
 @st.cache_data
 def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
     try:
-        # secrets["google"] → JSON 문자열로 변환
-        service_account_info = json.loads(json.dumps(dict(st.secrets["google"])))
-
-        # GCSFS 객체 생성 (여기서 문자열로 전달)
-        fs = gcsfs.GCSFileSystem(token=service_account_info)
-
-        # 파일 열기 및 읽기
-        with fs.open(gcs_uri, "rb") as f:
-            df = pd.read_csv(f)
+        # gcsfs가 설치되어 있으면 pandas가 자동으로 gs:// 경로를 처리합니다.
+        df = pd.read_csv(gcs_uri)
         return df
     except FileNotFoundError:
         st.error(f"오류: 지정된 GCS 경로에 파일이 없습니다: '{gcs_uri}'")
@@ -39,7 +28,7 @@ def load_data_from_gcs(gcs_uri):
     except Exception as e:
         st.error(f"GCS에서 파일을 읽는 중 오류 발생: {e}")
         return None
-
+    
 
 # --- 차트 생성 함수 (새로운 로직 반영) ---
 def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_col, selectable_years, y_axis_variables, specific_class_types, class_type_options, title_text):
@@ -287,6 +276,155 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
         st.info("위의 설정(데이터, 학교급, 연도 선택)을 완료하면 차트가 표시됩니다.")
 
 
+# --- 차트 생성 함수 2 (학교급 미포함 비율 데이터용) ---
+# 학교급 컬럼이 없는 비율 데이터를 시각화하기 위한 새로운 함수
+def render_chart_without_class_type(chart_num, gcs_uri, province_col, year_col, selectable_years, y_axis_variables, title_text):
+    """
+    학교급 컬럼이 포함되지 않은 비율 데이터를 시각화하는 함수.
+    (데이터 선택 -> 연도 선택 -> 시도별 연도 그룹 막대)
+
+    Args:
+        chart_num (int): 차트 번호 (key 생성을 위해 사용).
+        gcs_uri (str): 데이터 파일의 GCS URI.
+        province_col (str): 시도교육청 컬럼 이름.
+        year_col (str): 연도 컬럼 이름.
+        selectable_years (list): 데이터에 포함될 연도 목록.
+        y_axis_variables (list): Y축으로 사용할 변수 컬럼 이름 목록 (비율 데이터).
+        title_text (str): 차트 제목에 사용될 기본 텍스트.
+    """
+    st.write(f"---")
+    st.write(f"## {title_text}") # 차트 제목
+
+    # 데이터 로드
+    df = load_data_from_gcs(gcs_uri)
+
+    if df is None: return # 데이터 로드 실패 시 함수 종료
+
+    # 필수 컬럼 존재 체크 (학교급 컬럼은 체크하지 않음)
+    required_cols_check = [province_col, year_col] + y_axis_variables
+    missing_required_cols = [col for col in required_cols_check if col not in df.columns]
+    if missing_required_cols:
+        st.error(f"오류: CSV 파일에 필수 컬럼이 없습니다: {missing_required_cols}. 설정을 확인해주세요.")
+        return
+
+    # --- 위젯 설정 (데이터 먼저, 연도 나중에) ---
+    st.write("### 변수 설정 (데이터, 연도)") # 간소화된 설정 제목
+
+    # Y축 변수 선택 (key는 차트 번호와 위젯 목적 조합)
+    selected_variable_name = st.selectbox(
+        "시각화할 데이터를 선택해주세요",
+        sorted(y_axis_variables), # 이 목록에 있는 변수는 비율이라고 가정
+        key=f"chart{chart_num}_select_variable"
+    )
+
+    # 데이터에 실제로 있는 연도 확인 및 특정 연도 선택
+    available_years_in_data = sorted(df[year_col].unique().tolist())
+    common_years = sorted(list(set(available_years_in_data) & set(selectable_years)))
+
+    selected_plot_years = [] # 연도 선택 결과 (리스트)
+
+    if not common_years:
+        st.warning(f"지정된 연도({selectable_years}) 중 데이터에 실제로 존재하는 연도가 없습니다. 데이터의 '{year_col}' 컬럼 값을 확인해주세요.")
+    # 데이터 변수가 선택되어야 연도 위젯 표시
+    elif not selected_variable_name:
+        st.info(f"시각화할 데이터를 선택하면 연도 선택 위젯이 표시됩니다.")
+    else:
+        # 연도 선택 (나중에 표시, 여러 개 선택 가능)
+        selected_plot_years = st.multiselect(
+            "시각화할 연도를 선택해주세요",
+            sorted([str(y) for y in common_years]),
+            default=sorted([str(y) for y in common_years]), # 기본값: 모든 유효 연도 선택
+            key=f"chart{chart_num}_select_years"
+        )
+
+    # 정렬 옵션 체크박스
+    sort_by_value_checkbox = st.checkbox(
+        "Y축 값 (내림차순)으로 정렬",
+        value=True,
+        key=f"chart{chart_num}_sort_checkbox"
+    )
+
+    # --- 데이터 필터링 및 준비 ---
+    # 필요한 모든 선택이 완료되었을 경우에만 시각화 로직 실행
+    if selected_variable_name and selected_plot_years: # 데이터 변수와 연도가 선택됨
+        try:
+            st.write(f"### {selected_plot_years}년 만20-64세 {selected_variable_name} by {province_col}") # 제목
+
+            # 1. 선택된 연도로 데이터 필터링
+            df_filtered_by_year = df[df[year_col].astype(str).isin(selected_plot_years)].copy()
+
+            # 2. 값 컬럼 이름 통일 및 숫자 변환, 기본 NaN 제거
+            # 학교급 컬럼이 없으므로 해당 부분 처리는 생략
+            df_plot = df_filtered_by_year[[province_col, year_col, selected_variable_name]].copy() # 필요한 컬럼만 선택
+            df_plot.rename(columns={selected_variable_name: '값'}, inplace=True)
+            df_plot['값'] = pd.to_numeric(df_plot['값'], errors='coerce')
+            df_plot.dropna(subset=['값', province_col, year_col], inplace=True) # 필수 컬럼에 NaN 없는 행만 사용
+
+            # 시도교육청, 연도 조합으로 중복 제거 (만약 데이터에 중복이 있다면)
+            df_plot = df_plot.drop_duplicates(subset=[province_col, year_col]).copy()
+
+
+            # --- 시각화 (Altair 그룹형 막대 그래프 - 연도별 그룹핑) ---
+            if not df_plot.empty:
+                # 정렬 파라미터 결정 (sort_by_value_checkbox 사용)
+                sort_param = '-y' if sort_by_value_checkbox else 'ascending'
+
+                # --- Y축 스케일 및 포맷 (비율 데이터용 - 이 함수는 비율 데이터 전용) ---
+                y_scale = alt.Scale(domain=[0, 100]) # Y축 범위를 0 ~ 100으로 고정
+                value_format = ',.1f' # 비율은 소수점 첫째 자리까지 표시
+
+                y_encoding = alt.Y(
+                    '값',
+                    type='quantitative',
+                    title=selected_variable_name,
+                    scale=y_scale, # 0-100 스케일 적용
+                    axis=alt.Axis(title=selected_variable_name, format=value_format) # 축 라벨 포맷 적용
+                )
+
+                # --- Altair 인코딩 설정 (그룹형 막대 그래프 - 연도별 그룹핑) ---
+                chart_encoding = {
+                    # x축은 시도교육청 (메인 카테고리)
+                    "x": alt.X(
+                        province_col,
+                        sort=sort_param,
+                        axis=alt.Axis(title=province_col, labels=True),
+                        scale=alt.Scale(paddingInner=0.4) # 간격 조절
+                    ),
+                    # y축 인코딩
+                    "y": y_encoding,
+
+                    # 색상은 연도별로 다르게
+                    "color": alt.Color(year_col, title=year_col), # <-- 연도별 색상
+
+                    # xOffset을 사용하여 동일한 시도교육청 내에서 연도별 막대를 옆으로 나란히 배치
+                    "xOffset": alt.XOffset(year_col, title=year_col), # <-- 연도별 그룹핑
+
+                    # 툴팁 설정
+                    "tooltip": [
+                        province_col,
+                        year_col,
+                        alt.Tooltip('값', title=selected_variable_name, format=value_format) # 값 포맷 적용
+                    ]
+                }
+
+                # --- 차트 생성 ---
+                chart = alt.Chart(df_plot).mark_bar(size=12).encode(**chart_encoding).properties( # size=10 for bar thickness
+                    title=f'만20-64세 {selected_variable_name} by {province_col} ({", ".join(selected_plot_years)}년)' # 제목
+                ).interactive() # 확대/축소, 팬 기능 활성화
+
+
+                st.altair_chart(chart, use_container_width=True) # Streamlit 컨테이너 넓이에 맞춤
+
+            else:
+                st.warning(f"선택된 조건에 해당하는 최종 시각화 데이터가 없습니다. 설정(데이터, 연도)을 다시 확인해주세요.")
+
+        except Exception as e:
+            st.error(f"데이터 필터링 또는 시각화 중 오류가 발생했습니다: {e}")
+            st.exception(e) # 디버깅을 위해 예외 정보 출력
+
+    else: # 필수 위젯 중 하나라도 선택되지 않았으면
+        st.info("위의 설정(데이터, 연도 선택)을 완료하면 차트가 표시됩니다.")
+
 # --------------------- 차트 호출들 (변경 없음) -------------------------------------------------------------------------------------------------
 # render_chart_section 함수 호출하는 부분은 그대로 유지합니다.
 # 함수 내부 로직이 변경되었기 때문에, 동일한 호출로 새로운 형태의 차트가 그려집니다.
@@ -335,3 +473,21 @@ render_chart_section(
     title_text="시도교육청별 학교급별 급식비 부담 비율" # 차트 제목 텍스트 (학교급별로 변경)
 )
 
+
+# --------------------- 차트4 호출 (학교급 없음 - 비율) -------------------------------------------------------------------------------------------------
+# 새로 정의한 render_chart_without_class_type 함수를 호출하여 차트 4를 렌더링합니다.
+GCS_URI_4 = 'gs://school-lunch-bucket/lunch_menu/analysis_data_csv/census_20~64.csv' # <-- 차트4 데이터 파일 GCS 경로
+PROVINCE_COLUMN_NAME_4 = '행정구역(시도)별' # <-- 차트4 데이터 시도별 컬럼 이름 
+YEAR_COLUMN_NAME_4 = '연도'         # <-- 차트4 데이터 연도 컬럼 이름 
+SELECTABLE_YEARS_4 = [2021, 2022, 2023, 2024] # <-- 차트4에서 사용 가능한 연도 
+Y_AXIS_VARIABLES_4 = ['비율(%)'] # <-- 차트4의 비율 변수 컬럼 이름 목록 
+
+render_chart_without_class_type(
+    chart_num=4,
+    gcs_uri=GCS_URI_4,
+    province_col=PROVINCE_COLUMN_NAME_4,
+    year_col=YEAR_COLUMN_NAME_4,
+    selectable_years=SELECTABLE_YEARS_4,
+    y_axis_variables=Y_AXIS_VARIABLES_4, # 이 목록의 변수는 비율로 간주되어 Y축이 0-100으로 고정됩니다.
+    title_text="시도별 연도별 만20-64세 인구 비율 집계 데이터" # 차트 제목 텍스트
+)

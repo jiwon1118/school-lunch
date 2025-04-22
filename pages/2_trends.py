@@ -2,9 +2,14 @@ import streamlit as st
 from google.cloud import bigquery
 import pandas as pd
 from datetime import datetime
+from google.oauth2 import service_account
+credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
+
+# ✅ project 명시적으로 지정!
+project_id = st.secrets["google"]["project_id"]
 
 # BigQuery 클라이언트 생성
-client = bigquery.Client()
+client = bigquery.Client(credentials=credentials, project=project_id)
 
 st.set_page_config(page_title="Lunch", page_icon="🍱")
 st.title("학교별 급식 통계와 트렌드")
