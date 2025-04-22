@@ -20,8 +20,11 @@ st.write(" ")
 def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
     try:
-        # st.secrets에 저장된 구글 인증 정보를 사용해 GCSFileSystem 생성
-        fs = gcsfs.GCSFileSystem(token=json.loads(st.secrets["google"]))
+        # secrets["google"] → JSON 문자열로 변환
+        service_account_info = json.loads(json.dumps(st.secrets["google"]))
+
+        # GCSFS 객체 생성 (여기서 문자열로 전달)
+        fs = gcsfs.GCSFileSystem(token=service_account_info)
 
         # 파일 열기 및 읽기
         with fs.open(gcs_uri, "rb") as f:
