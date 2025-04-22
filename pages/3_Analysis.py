@@ -6,6 +6,11 @@ import calendar
 from google.oauth2 import service_account
 credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
+# ✅ project 명시적으로 지정!
+project_id = st.secrets["google"]["project_id"]
+
+# BigQuery 클라이언트 생성
+client = bigquery.Client(credentials=credentials, project=project_id)
 
 st.set_page_config(page_title="Lunch", page_icon="🍱")
 st.title("🍱 급식 영양 균형 분석 달력")
@@ -44,7 +49,6 @@ start_date = int(f"{year}{month:02}01")
 end_date = int(f"{year}{month:02}{calendar.monthrange(year, month)[1]}")
 
 if school_name:
-    client = bigquery.Client()
 
     # 쿼리
     query = f"""
