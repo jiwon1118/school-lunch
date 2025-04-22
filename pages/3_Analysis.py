@@ -116,3 +116,23 @@ if school_name:
     #st.dataframe(calendar_df, use_container_width=True)
     # HTML로 출력
     st.markdown(calendar_df.to_html(escape=False), unsafe_allow_html=True)
+    
+
+# ✅ 월 평균 부족 영양소 개수
+    df["deficient_count"] = df["NUT_DICT"].apply(
+    lambda x: len(is_deficient(x, standard) or []))
+    avg_def = df["deficient_count"].mean()
+
+    # 별점 평가
+    if avg_def == 3.5:
+        stars = "⭐⭐⭐⭐⭐ (매우 양호)"
+    elif avg_def <= 5:
+        stars = "⭐⭐⭐ (보통)"
+    else:
+        stars = "⭐ (심각)"
+
+    st.subheader("📊 월별 평균 부족 영양소 개수 평가")
+    st.markdown(f"""
+    - 평균 부족 영양소 수: **{avg_def:.1f} 개**
+    - 평가: **{stars}**
+    """)
