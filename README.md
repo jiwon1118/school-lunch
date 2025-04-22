@@ -17,10 +17,9 @@
 - **제공 포맷 (예: JSON, CSV, XML, API 등):** CSV, JSON, API
 
 ### 2. 보조 데이터:
-
 - 자치구별 학교급식운영 예산안 [지방교육재정 알리미](https://www.eduinfo.go.kr/portal/open/openData/dataSetPage.do#none;)
-- **수집 주기 / 업데이트 주기:** 1년
-- 권장 영양소 기준치 데이터 ["서울특별시교육청보건안전진흥원"](https://bogun.sen.go.kr/fus/MI000000000000000562/html/cont0010v.do)
+- **수집 주기 / 업데이트 주기:** 1년 
+- 권장 영양소 기준치 데이터 [서울특별시교육청보건안전진흥원](https://bogun.sen.go.kr/fus/MI000000000000000562/html/cont0010v.do)
 
 ## 💻 분석 주제
 
