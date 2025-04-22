@@ -115,7 +115,7 @@ ORDER BY LV
 df = client.query(query).to_dataframe()
 
 # Streamlit UI
-st.title("학교급별 하루 평균 메뉴 수")
+st.subheader("학교급별 하루 평균 메뉴 수")
 
 st.dataframe(df)
 
@@ -170,7 +170,7 @@ custom_names = {
 df["REG_N"] = df.apply(lambda row: custom_names.get(row["REG_C"], row["REG_N"]), axis=1)
 
 # UI
-st.title("📊 지역별·학교급별 하루 평균 메뉴 수")
+st.subheader("📊 지역별·학교급별 하루 평균 메뉴 수")
 
 # 연도 필터
 years = sorted(df["DATE_YEAR"].unique())
@@ -194,5 +194,5 @@ pivot_df = pivot_df.sort_values(by="평균", ascending=False)
 pivot_df["순위"] = range(1, len(pivot_df) + 1)
 pivot_df = pivot_df[["순위"] + [col for col in pivot_df.columns if col != "순위"]]
 
-st.write(f"### {selected_year}년 지역별 하루 평균 메뉴 수 (학교급별)")
+st.write(f"{selected_year}년 지역별 하루 평균 메뉴 수 (학교급별)")
 st.dataframe(pivot_df.style.format("{:.1f}"))
