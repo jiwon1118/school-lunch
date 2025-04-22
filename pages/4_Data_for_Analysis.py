@@ -3,6 +3,7 @@ from google.cloud import storage
 import pandas as pd
 import altair as alt
 import gcsfs
+import json
 from google.oauth2 import service_account
 credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
@@ -19,8 +20,12 @@ st.write(" ")
 def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
     try:
-        # gcsfs가 설치되어 있으면 pandas가 자동으로 gs:// 경로를 처리합니다.
-        df = pd.read_csv(gcs_uri)
+        # st.secrets에 저장된 구글 인증 정보를 사용해 GCSFileSystem 생성
+        fs = gcsfs.GCSFileSystem(token=json.loads(st.secrets["google"]))
+
+        # 파일 열기 및 읽기
+        with fs.open(gcs_uri, "rb") as f:
+            df = pd.read_csv(f)
         return df
     except FileNotFoundError:
         st.error(f"오류: 지정된 GCS 경로에 파일이 없습니다: '{gcs_uri}'")
