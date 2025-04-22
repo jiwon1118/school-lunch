@@ -29,8 +29,14 @@ dataset = ds.dataset(gcs_path, filesystem=fs, format="parquet")
 # 컬럼의 데이터 타입을 int32로 변경
 #df = df.withColumn('DATE', col('DATE').cast('int'))
 df = dataset.to_table().to_pandas()
-df['DATE'] = df['DATE'].dt.year * 10000 + df['DATE'].dt.month * 100 + df['DATE'].dt.day
-df['DATE'] = df['DATE'].astype('int32')
+#df['DATE'] = df['DATE'].dt.year * 10000 + df['DATE'].dt.month * 100 + df['DATE'].dt.day
+#df['DATE'] = df['DATE'].astype('int32')
+#df['NUT_DICT'] = df['NUT_DICT'].apply(json.dumps) 
+
+
+key_map = {'단백질(g)': 'pro_g', '리보플라빈(mg)': 'riboflav_mg', '비타민A(R.E)': 'vitaA_RE', '비타민C(mg)': 'vitaC_mg', '지방(g)': 'fat_g', '철분(mg)': 'iron_mg', '칼슘(mg)': 'cal_mg', '탄수화물(g)': 'crab_g', '티아민(mg)': 'thiam_mg'}
+
+df['NUT_DICT'] = df['NUT_DICT'].apply(lambda d: {key_map.get(k, k): v for k, v in d.items()})
 
 if fs.exists(gcs_path):
     fs.rm(gcs_path, recursive=True)
@@ -47,7 +53,7 @@ pq.write_to_dataset(
 
 
 message = {
-    "content": f"{year}{month} 데이터 변환 종료"
+    "content": f"{year}{month} 데이터 변환 종료2"
     }
 response = requests.post(webhook_url, data=json.dumps(message), headers={'Content-Type': 'application/json'})
 print('--------------------------------------------------------------------------------')

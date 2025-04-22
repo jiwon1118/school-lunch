@@ -297,3 +297,6 @@ render_chart_section(
 
 st.write("---")
 st.write("이 앱은 Streamlit, Pandas, Altair, gcsfs를 사용하며, 지정된 GCS 경로 파일을 읽어 데이터를 시각화합니다.")
+
+
+
