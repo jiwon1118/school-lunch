@@ -6,7 +6,7 @@ authors = [
     {name = "jiwon1118", email = "b23386585@gmail.com"},
 ]
 
-dependencies = ["pandas>=2.2.3", "requests>=2.32.3", "pyarrow>=19.0.1", "jupyter>=1.1.1", "streamlit>=1.44.1", "fsspec>=2025.3.2", "gcsfs>=2025.3.2", "google-cloud-bigquery>=3.31.0", "db-dtypes>=1.4.2"]
+dependencies = ["pandas>=2.2.3", "requests>=2.32.3", "pyarrow>=19.0.1", "jupyter>=1.1.1", "streamlit>=1.44.1", "fsspec>=2025.3.2", "gcsfs>=2025.3.2", "google-cloud-bigquery>=3.31.0", "db-dtypes>=1.4.2", "plotly>=6.0.1"]
 requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
