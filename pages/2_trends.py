@@ -2,6 +2,8 @@ import streamlit as st
 from google.cloud import bigquery
 import pandas as pd
 from datetime import datetime
+from google.oauth2 import service_account
+credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
 # BigQuery 클라이언트 생성
 client = bigquery.Client()

@@ -2,8 +2,9 @@ import streamlit as st
 from google.cloud import bigquery
 import pandas as pd
 from datetime import datetime
-
 import calendar
+from google.oauth2 import service_account
+credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
 
 st.set_page_config(page_title="Lunch", page_icon="🍱")
