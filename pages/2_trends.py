@@ -75,6 +75,7 @@ WITH current_year_menus AS (
     SELECT DISTINCT MENU AS menu
     FROM `shining-reality-455501-q0.school_lunch.school-lunch`
     WHERE SUBSTR(CAST(DATE AS STRING), 1, 4) = '{selected_year}'
+    AND REGEXP_CONTAINS(MENU, r'^[가-힣]')  -- ✅ 한글로 시작하는 것만
 ),
 previous_year_menus AS (
     SELECT DISTINCT MENU AS menu
