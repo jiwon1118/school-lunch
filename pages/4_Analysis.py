@@ -325,4 +325,3 @@ render_chart_section(
 )
 
 
-

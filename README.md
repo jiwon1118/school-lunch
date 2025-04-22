@@ -18,6 +18,7 @@
 ### 2. 보조 데이터:
 - 자치구별 학교급식운영 예산안 [지방교육재정 알리미](https://www.eduinfo.go.kr/portal/open/openData/dataSetPage.do#none;)
 - **수집 주기 / 업데이트 주기:** 1년 
+- 권장 영양소 기준치 데이터 ["서울특별시교육청보건안전진흥원"](https://bogun.sen.go.kr/fus/MI000000000000000562/html/cont0010v.do)
 
 
 ## 💻 분석 주제
@@ -26,12 +27,11 @@
 2) 계절/요일별 트렌드: 여름엔 냉면류, 겨울엔 찌개류 증가 여부
 3) 메뉴 인기 순위: 1년동안 출현 빈도 기준 Top 20 메뉴 시각화
 4) 영양 불균형 탐지: 총 열량 칼로리, 단백질/지방 과소/과다 분석 - 초/중/고 권장 영양소 기준치 데이터 필요
+
+**추후 추가 사항**
 5) 전국 시도별 비교: 급식 품질 vs 예산/학생수 연계 - 보조 데이터 필요
       + 학생 1인당 급식비 예산 분석 --> 분석 방향: 지역별로 1인당 급식비 추정 (예산 ÷ 식 수) / 메뉴 다양성, 영양소 질과 비교 → 예산이 높은 곳이 더 나은 식단인가?)
       + 급식 품질과의 관계 비교를 위한 시각화 -> 영양수준의 충실성, 메뉴의 다양성 평가 기준으로
-
-**추후 추가 사항**
-
 6) 지역별 특별 메뉴 (전국단위 분석)
 7) 연도별 특별 메뉴 (시계열 분석)
 
@@ -71,20 +71,23 @@
 
 ### DAG 설계 방향 
 
-1. DAG 설명
-- Task ID    설명
-- fetch_meals_data    급식 원본 데이터 수집 (CSV, API, S3 등)
-- clean_data    Null/이상치 처리, 날짜 정제 등 전처리
-- sync_data    인원 간 데이터 동기화
-- run_eda_analysis    메뉴 빈도 분석, 영양 통계, 계절 트렌드 등
-- enrich_with_external_data   시도별 학생수, 예산 등의 외부 지표 결합
-- save_results    분석 결과를 CSV, DB 등에 저장
+### DAG 설명
+1. data_import.py
+   1. school_lunch : 데이터를 읽어오고 처리한 뒤 저장 자동화
+         - load_json_from_gcs : gs에 저장한 학교코드 및 구분 json 파일 읽어오기
+         - get_api : url생성 및 데이터 병합
+         - fetch_json : 생성된 url를 이용한 opneApi데이터 호출
+         - pre_parquet : 데이터 전처리
+         - upload_partitioned_parquet_to_gcs : 완료된 데이터를 gs에 업로드
+   2. date_edit : bigquery 생성을 위한 추가 데이터 변형
+         - date, nut_dict의 타입, 언어 변경
 
 ### 저장소 
-- Google Storage 사용 및 인원 간 동기화
+- Google Storage : 데이터 parquet들을 날짜로 partition하여 저장
+- BigQuery : gs의 parquet을 이용한 Table Schema 생성
 
 ### 알림 설정
-- Discord 웹후크 기능으로 데이터 처리 중 오류 발생 시 팀 채널에 알림 활성화
+- Discord 웹후크 기능으로 데이터 처리 중 오류 발생, 작업 완료 시 팀 채널에 알림 활성화
 
 ### 기타
 
