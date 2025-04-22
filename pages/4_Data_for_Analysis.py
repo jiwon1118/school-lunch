@@ -21,7 +21,7 @@ def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
     try:
         # secrets["google"] → JSON 문자열로 변환
-        service_account_info = json.loads(json.dumps(st.secrets["google"]))
+        service_account_info = json.loads(json.dumps(dict(st.secrets["google"])))
 
         # GCSFS 객체 생성 (여기서 문자열로 전달)
         fs = gcsfs.GCSFileSystem(token=service_account_info)
@@ -288,44 +288,42 @@ render_chart_section(
     gcs_uri='gs://school-lunch-bucket/lunch_menu/analysis_data_csv/student_by_class_and_school.csv',
     province_col='시도교육청',
     year_col='연도',
-    class_type_col='학급구분',
+    class_type_col='구분',
     selectable_years=[2021, 2022, 2023, 2024],
-    y_axis_variables=['계 학생수'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
+    y_axis_variables=['학생수 합계'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
     specific_class_types=['초등학교', '중학교', '고등학교'], # 전체 합계 계산에 사용될 개별 타입
     class_type_options=['전체', '초등학교', '중학교', '고등학교'], # 사용자가 선택할 옵션
-    title_text="시도교육청별 연도별 학생수 집계" # 차트 제목 텍스트
+    title_text="시도교육청별 학교급별 학생수 집계" # 차트 제목 텍스트 (학교급별로 변경)
 )
 
 
 # --------------------- 차트2 호출 -------------------------------------------------------------------------------------------------
-# 차트1과 다른 GCS 파일 및 변수, 학급구분 컬럼 이름 등을 사용합니다.
 render_chart_section(
     chart_num=2,
     gcs_uri='gs://school-lunch-bucket/lunch_menu/analysis_data_csv/school_lunch_propotion_rate.csv', # GCS 파일 경로 확인
-    province_col='시도교육청', # 컬럼 이름 확인
-    year_col='연도',         # 컬럼 이름 확인
+    province_col='시도교육청',
+    year_col='연도',
     class_type_col='구분',      # 컬럼 이름 확인 ('학급구분' 대신 '구분'으로 변경됨)
     selectable_years=[2021, 2022, 2023, 2024],
-    y_axis_variables=['금액 계'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
+    y_axis_variables=['급식비 합계'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
     specific_class_types=['초등학교', '중학교', '고등학교'], # 차트2 데이터에 맞는 개별 타입 목록으로 수정 필요
     class_type_options=['전체', '초등학교', '중학교', '고등학교'], # 차트2 데이터에 맞는 선택 옵션 목록으로 수정 필요
-    title_text="시도교육청별 연도별 급식비 집계" # 차트 제목 텍스트
+    title_text="시도교육청별 학교급별 급식비 집계" # 차트 제목 텍스트 (학교급별로 변경)
 )
 
 
 # --------------------- 차트3 호출 -------------------------------------------------------------------------------------------------
-# 차트1, 2와 다른 GCS 파일 및 변수, 학급구분 컬럼 이름 등을 사용합니다.
 render_chart_section(
     chart_num=3,
     gcs_uri='gs://school-lunch-bucket/lunch_menu/analysis_data_csv/school_lunch_propotion_rate.csv', # GCS 파일 경로 확인 (차트2와 동일)
-    province_col='시도교육청', # 컬럼 이름 확인
-    year_col='연도',         # 컬럼 이름 확인
+    province_col='시도교육청',
+    year_col='연도',
     class_type_col='구분',      # 컬럼 이름 확인 ('학급구분' 대신 '구분'으로 변경됨)
     selectable_years=[2021, 2022, 2023, 2024],
     y_axis_variables=['교육청 비율', '자치단체 비율', '보호자 비율', '기타 비율'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
     specific_class_types=['초등학교', '중학교', '고등학교'], # 차트3 데이터에 맞는 개별 타입 목록으로 수정 필요 (차트2와 동일할 가능성 높음)
     class_type_options=['전체', '초등학교', '중학교', '고등학교'], # 차트3 데이터에 맞는 선택 옵션 목록으로 수정 필요 (차트2와 동일할 가능성 높음)
-    title_text="시도교육청별 연도별 급식비 부담 비율" # 차트 제목 텍스트
+    title_text="시도교육청별 학교급별 급식비 부담 비율" # 차트 제목 텍스트 (학교급별로 변경)
 )
 
 
