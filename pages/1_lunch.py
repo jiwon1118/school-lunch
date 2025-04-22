@@ -5,13 +5,19 @@ from datetime import datetime
 from google.oauth2 import service_account
 credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
+# ✅ project 명시적으로 지정!
+project_id = st.secrets["google"]["project_id"]
+
+# BigQuery 클라이언트 생성
+client = bigquery.Client(credentials=credentials, project=project_id)
+
 st.set_page_config(page_title="Lunch", page_icon="🍱")
 st.title("급식 일정 확인")
 st.write("**📅 학교별로 한달 급식 일정을 확인해보세요**")
 
 
-# BigQuery 클라이언트 생성
-client = bigquery.Client()
+# # BigQuery 클라이언트 생성
+# client = bigquery.Client()
 
 # 시도교육청 리스트 예시
 
