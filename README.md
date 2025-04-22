@@ -71,20 +71,23 @@
 
 ### DAG 설계 방향 
 
-1. DAG 설명
-- Task ID    설명
-- fetch_meals_data    급식 원본 데이터 수집 (CSV, API, S3 등)
-- clean_data    Null/이상치 처리, 날짜 정제 등 전처리
-- sync_data    인원 간 데이터 동기화
-- run_eda_analysis    메뉴 빈도 분석, 영양 통계, 계절 트렌드 등
-- enrich_with_external_data   시도별 학생수, 예산 등의 외부 지표 결합
-- save_results    분석 결과를 CSV, DB 등에 저장
+### DAG 설명
+1. data_import.py
+   1. school_lunch : 데이터를 읽어오고 처리한 뒤 저장 자동화
+         - load_json_from_gcs : gs에 저장한 학교코드 및 구분 json 파일 읽어오기
+         - get_api : url생성 및 데이터 병합
+         - fetch_json : 생성된 url를 이용한 opneApi데이터 호출
+         - pre_parquet : 데이터 전처리
+         - upload_partitioned_parquet_to_gcs : 완료된 데이터를 gs에 업로드
+   2. date_edit : bigquery 생성을 위한 추가 데이터 변형
+         - date, nut_dict의 타입, 언어 변경
 
 ### 저장소 
-- Google Storage 사용 및 인원 간 동기화
+- Google Storage : 데이터 parquet들을 날짜로 partition하여 저장
+- BigQuery : gs의 parquet을 이용한 Table Schema 생성
 
 ### 알림 설정
-- Discord 웹후크 기능으로 데이터 처리 중 오류 발생 시 팀 채널에 알림 활성화
+- Discord 웹후크 기능으로 데이터 처리 중 오류 발생, 작업 완료 시 팀 채널에 알림 활성화
 
 ### 기타
 
