@@ -1,5 +1,6 @@
 # 초·중·고등학교 급식 트렌드 분석과 외부 지표 연계 🍱🍽️
 - [streamlit link](https://school-lunch.streamlit.app/)
+<img width="566" alt="image" src="https://github.com/user-attachments/assets/e65e4d3b-3b97-4523-a26a-fdfb9315adb8" />
 
 ## :rocket: 프로젝트 개요
 
@@ -105,7 +106,7 @@
 
 ### 조직도
 
-![Image](https://github.com/user-attachments/assets/e48719dd-3931-4386-a609-597941169c01)
+<img width="920" alt="image" src="https://github.com/user-attachments/assets/29cea23f-1280-4f46-b83b-637237f23554" />
 
 ---
 
@@ -140,3 +141,13 @@
 2. dags = [data_import.py : school_lunch.py파일의 쉘 실행 자동화 dags. 로컬 dags에 가상링크로 연결하여 사용]
 
 3. temp = test나 임시 코드, 구 버전 미사용 코드 저장
+
+## 회고록
+
+- 배형균
+
+- 백지원
+ 
+- 조성근
+  
+- 조민규
