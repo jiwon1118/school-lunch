@@ -15,7 +15,7 @@ credentials = service_account.Credentials.from_service_account_info(st.secrets["
 # Streamlit 페이지 기본 설정
 st.set_page_config(page_title="Lunch", page_icon="🍱")
 st.title("17개 시도별 급식 관련 자료 분석")
-st.subheader("학교알리미 공공데이터 자료를 활용한 집계")
+st.subheader("📊 학교알리미 공공데이터 자료를 활용한 집계")
 st.write(" ")
 
 # --- 데이터 로드 함수 (GCS에서 파일 읽기) ---
@@ -87,21 +87,31 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
 
 
     # --- 위젯 설정 (학교급 먼저, 연도 나중에) ---
-    st.write("### 변수 설정 (데이터, 학교급, 연도)") # 제목 변경
+    st.write("**✅ 변수 설정 (데이터, 학교급, 연도)**") # 제목 변경
 
     # Y축 변수 선택 (key는 차트 번호와 위젯 목적 조합)
     selected_variable_name = st.selectbox(
-        "데이터를 선택해주세요",
+        "시각화할 데이터를 선택해주세요",
         sorted(y_axis_variables),
         key=f"chart{chart_num}_select_variable"
     )
 
-    # 학교급 선택 (먼저 표시)
-    st.write(f"학교급별 '{class_type_col}'을 선택해주세요. (*전체를 선택하면 개별 학교급은 체크 해제해주세요.)") # 안내 문구 변경
-    selected_class_types = st.multiselect(
-        f"{class_type_col} 선택",
+    # 학교급 선택 (하나만 선택 가능하도록 변경)
+    st.write(f"학교급{class_type_col}을 선택해주세요.") # 라벨 텍스트 수정
+    # --- default 대신 index 사용 (Streamlit 구버전 호환) ---
+    default_index = 0 # 기본값은 첫 번째 항목 (인덱스 0)
+    if '전체' in class_type_options:
+        try:
+            default_index = class_type_options.index('전체')
+        except ValueError:
+            pass # '전체'가 목록에 없는 경우
+
+    # 만약 class_type_options가 비어있다면 selectbox는 오류를 발생시킵니다.
+    # 비어있는 경우를 대비한 추가 로직이 필요할 수 있으나, 현재는 비어있지 않다고 가정합니다.
+    selected_class_type = st.selectbox( # <-- Use selectbox
+        f"학교급 선택", # 라벨 간소화
         class_type_options,
-        default=['전체'] if '전체' in class_type_options else ([] if not class_type_options else [class_type_options[0]]), # 기본값 설정
+        index=default_index, # <-- index 사용
         key=f"chart{chart_num}_select_class_type" # 고유한 key
     )
 
@@ -113,32 +123,32 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
 
     if not common_years:
         st.warning(f"지정된 연도({selectable_years}) 중 데이터에 실제로 존재하는 연도가 없습니다. 데이터의 '{year_col}' 컬럼 값을 확인해주세요.")
-        # common_years가 없으므로 연도 선택 multiselect를 표시하지 않습니다.
-    elif not selected_class_types:
-         st.info(f"'{class_type_col}' 선택을 완료하면 연도 선택 위젯이 표시됩니다.")
-    else: # 학교급이 선택되었고, 데이터에 유효 연도가 있는 경우
+    # 연도 선택 위젯 표시 조건: 데이터 변수가 선택되었고, 학교급이 하나 선택되었을 경우
+    elif selected_class_type is None: # 학교급이 선택되지 않았으면 (selectbox는 None을 반환할 수 있음)
+         st.info(f"학교급 선택을 완료하면 연도 선택 위젯이 표시됩니다.")
+    else: # 학교급이 하나 선택되었고, 데이터에 유효 연도가 있는 경우
         # 연도 선택 (나중에 표시, 여러 개 선택 가능)
         selected_plot_years = st.multiselect(
-            "시각화할 연도를 선택해주세요", # 라벨 변경
+            "연도를 선택해주세요",
             sorted([str(y) for y in common_years]),
             default=sorted([str(y) for y in common_years]), # 기본값: 모든 유효 연도 선택
             key=f"chart{chart_num}_select_years" # 고유한 key (복수형)
         )
 
-
     # 정렬 옵션 체크박스
     sort_by_value_checkbox = st.checkbox(
-        "Y축 값 (내림차순)으로 정렬",
+        "내림차순 (Y축 값 기준)으로 정렬", # 라벨 수정
         value=True,
         key=f"chart{chart_num}_sort_checkbox" # 고유한 key
     )
 
 
-    # --- 데이터 필터링 및 준비 (새로운 로직 반영) ---
+    # --- 데이터 필터링 및 준비 (단수 학교급 선택 로직 반영) ---
     # 필요한 모든 선택이 완료되었을 경우에만 시각화 로직 실행
-    if selected_variable_name and selected_class_types and selected_plot_years: # 필수 위젯 모두 선택됨
+    if selected_variable_name and selected_class_type is not None and selected_plot_years: # 데이터 변수, 학교급(하나), 연도(하나 이상) 선택됨
         try:
-            st.write(f"### {selected_plot_years}년 {selected_variable_name} ({province_col}별 - {', '.join(selected_class_types)})")
+            # 제목에 선택된 학교급(단수)와 연도들(복수) 표시
+            st.write(f"### {selected_variable_name} by {province_col} ({selected_class_type} - {', '.join(selected_plot_years)}년)")
 
             # 1. 선택된 연도로 데이터 1차 필터링
             df_filtered_by_year = df[df[year_col].astype(str).isin(selected_plot_years)].copy()
@@ -147,16 +157,16 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
             df_process = df_filtered_by_year.copy()
             df_process.rename(columns={selected_variable_name: '값'}, inplace=True)
             df_process['값'] = pd.to_numeric(df_process['값'], errors='coerce')
-            df_process.dropna(subset=['값', province_col, class_type_col, year_col], inplace=True) # 필수 컬럼에 NaN 없는 행만 사용
+            df_process.dropna(subset=['값', province_col, class_type_col, year_col], inplace=True)
 
 
-            # 3. 선택된 학교급에 따라 최종 시각화 데이터프레임 구성
+            # 3. 선택된 학교급(하나)에 따라 최종 시각화 데이터프레임 구성
             df_to_plot = pd.DataFrame()
             dataframes_to_concat = []
 
             # 사용자가 '전체'를 선택했다면, '전체' 데이터 생성 및 추가
-            if '전체' in selected_class_types:
-                 # df_process에서 합계/평균 계산 대상 개별 타입들만 필터링 (선택된 연도들 내에서)
+            if selected_class_type == '전체':
+                 # '전체'가 선택된 경우: 개별 학교급들의 합계 또는 평균 계산
                  specific_types_in_processed_data_for_total = [
                       item for item in specific_class_types
                       if item in df_process[class_type_col].unique()
@@ -168,12 +178,17 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
 
                       if not df_specific_types_only_for_total.empty:
                            # 시도교육청별, 연도별로 그룹화하여 합계/평균 계산
-                           if chart_num == 3:
-                               # 비율 차트: 평균 계산
+                           # 차트 1, 2는 합계, 차트 3, 4는 평균 (사용자 요청 반영)
+                           if chart_num == 3 or chart_num == 4:
                                df_total = df_specific_types_only_for_total.groupby([province_col, year_col])['값'].mean().reset_index()
-                           else:
-                               # 수량 차트: 합계 계산
+                               # --- 여기에 평균 계산 안내 메시지 추가 ---
+                               st.info("참고: 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **평균**으로 계산됩니다.")
+
+                           else: # 차트 1, 2
                                df_total = df_specific_types_only_for_total.groupby([province_col, year_col])['값'].sum().reset_index()
+                               # --- 여기에 합계 계산 안내 메시지 추가 ---
+                               st.info("참고: 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **합계**로 계산됩니다.")
+
 
                            df_total[class_type_col] = '전체' # '전체' 학급구분 값 추가
                            dataframes_to_concat.append(df_total)
@@ -181,22 +196,21 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                            st.warning(f"경고: 선택된 연도({', '.join(selected_plot_years)}) 데이터에 전체 합계/평균 계산을 위한 개별 학교급 타입({specific_class_types})의 유효한 값이 없어 '전체' 값을 계산할 수 없습니다.")
 
 
-            # 사용자가 '전체' 외 개별 학교급 타입을 선택했다면 해당 데이터 추가
-            # selected_class_types 중 '전체'를 제외하고, 실제 데이터(df_process)에도 있는 것들만 필터링
-            selected_specific_types_to_add = [
-                 ct for ct in selected_class_types if ct != '전체'
-                 if ct in df_process[class_type_col].unique()
-            ]
-            if selected_specific_types_to_add:
-                 df_specific_selected = df_process[
-                      df_process[class_type_col].isin(selected_specific_types_to_add)
-                 ].copy()
-                 if not df_specific_selected.empty:
-                      # 개별 타입은 이미 해당 타입으로 필터링된 상태이므로 추가 집계 필요 없음
-                      dataframes_to_concat.append(df_specific_selected)
+            # 사용자가 개별 학교급 타입을 선택했다면 해당 데이터 추가
+            # selected_class_type 변수는 이미 선택된 단일 값입니다.
+            elif selected_class_type != '전체':
+                 # 선택된 특정 학교급이 실제 데이터(df_process)에 있는지 확인
+                 if selected_class_type in df_process[class_type_col].unique():
+                      # --- 여기서 해당 학교급 데이터만 필터링하고 dataframes_to_concat에 추가 ---
+                      df_specific_selected = df_process[
+                           df_process[class_type_col] == selected_class_type # <-- Filter using == for single value
+                      ].copy()
+                      if not df_specific_selected.empty:
+                           dataframes_to_concat.append(df_specific_selected)
+                      else:
+                           st.warning(f"경고: 선택된 연도({', '.join(selected_plot_years)}) 데이터에 선택된 학교급('{selected_class_type}')의 유효한 값이 없습니다.")
                  else:
-                      # 선택된 특정 학교급이 선택된 연도 데이터에 없는 경우
-                      st.warning(f"경고: 선택된 연도({', '.join(selected_plot_years)}) 데이터에 선택된 학교급({', '.join(selected_specific_types_to_add)})의 유효한 값이 없습니다.")
+                     st.warning(f"경고: 선택된 학교급('{selected_class_type}')이 데이터에 존재하지 않습니다.")
 
 
             # 구성된 데이터프레임들을 하나로 합침
@@ -204,11 +218,11 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                 df_to_plot = pd.concat(dataframes_to_concat, ignore_index=True)
 
                 # 최종 정리 (혹시 모를 중복 등 제거)
-                df_plot = df_to_plot.dropna(subset=['값', province_col, class_type_col, year_col]).copy() # 필수 컬럼 다시 체크
-                # 시도교육청, 연도, 학급구분 조합으로 중복 제거
+                # 시도교육청, 연도, 학급구분 조합으로 중복 제거 (학교급은 하나만 있으므로 사실상 시도교육청, 연도 조합)
+                df_plot = df_to_plot.dropna(subset=['값', province_col, class_type_col, year_col]).copy()
                 df_plot = df_plot.drop_duplicates(subset=[province_col, year_col, class_type_col]).copy()
 
-            else: # '전체'도 선택 안 했거나, 선택했지만 유효 데이터가 없거나, 개별 타입도 선택 안 한 경우
+            else:
                  df_plot = pd.DataFrame() # 시각화할 데이터 없음
 
 
@@ -223,7 +237,7 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
 
                 # 현재 차트가 3번이고, 선택된 변수가 비율 변수 목록에 있는지 확인
                 # y_axis_variables는 이 함수에 전달된 그 차트의 변수 목록입니다.
-                if chart_num == 3 and selected_variable_name in y_axis_variables:
+                if chart_num == 4 and selected_variable_name in y_axis_variables:
                     y_scale = alt.Scale(domain=[0, 100]) # Y축 범위를 0 ~ 100으로 고정
                     value_format = ',.1f' # 비율은 소수점 첫째 자리까지 표시하도록 포맷 변경
 
@@ -268,8 +282,8 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                 }
 
                 # --- 차트 생성 ---
-                chart = alt.Chart(df_plot).mark_bar(size=12).encode(**chart_encoding).properties(
-                    title=f'{selected_variable_name} by {province_col} ({", ".join(selected_class_types)} - {", ".join(selected_plot_years)}년)' # 제목에 학교급과 연도 모두 표시
+                chart = alt.Chart(df_plot).mark_bar(size=8).encode(**chart_encoding).properties(
+                    title=f'{selected_variable_name} by {province_col} ({(selected_class_type)} - {", ".join(selected_plot_years)}년)' # 제목에 학교급과 연도 모두 표시
                 ).interactive() # 확대/축소, 팬 기능 활성화
 
 
@@ -320,10 +334,24 @@ render_chart_section(
     title_text="시도교육청별 학교급별 급식비 집계" # 차트 제목 텍스트 (학교급별로 변경)
 )
 
-
 # --------------------- 차트3 호출 -------------------------------------------------------------------------------------------------
 render_chart_section(
     chart_num=3,
+    gcs_uri='gs://school-lunch-bucket/lunch_menu/analysis_data_csv/school_lunch_money_per_student.csv', # GCS 파일 경로 확인
+    province_col='시도교육청',
+    year_col='연도',
+    class_type_col='구분',      # 컬럼 이름 확인 ('학급구분' 대신 '구분'으로 변경됨)
+    selectable_years=[2021, 2022, 2023, 2024],
+    y_axis_variables=['학생 1인당 급식비'], # 이 목록을 실제 컬럼 이름들로 채워야 합니다.
+    specific_class_types=['초등학교', '중학교', '고등학교'], # 차트2 데이터에 맞는 개별 타입 목록으로 수정 필요
+    class_type_options=['전체', '초등학교', '중학교', '고등학교'], # 차트2 데이터에 맞는 선택 옵션 목록으로 수정 필요
+    title_text="시도교육청별 학교급별 학생 1인당 급식비 집계" # 차트 제목 텍스트 (학교급별로 변경)
+)
+
+
+# --------------------- 차트4 호출 -------------------------------------------------------------------------------------------------
+render_chart_section(
+    chart_num=4,
     gcs_uri='gs://school-lunch-bucket/lunch_menu/analysis_data_csv/school_lunch_propotion_rate.csv', # GCS 파일 경로 확인 (차트2와 동일)
     province_col='시도교육청',
     year_col='연도',
