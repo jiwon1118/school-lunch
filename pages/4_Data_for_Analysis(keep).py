@@ -3,35 +3,51 @@ from google.cloud import storage # gcsfs 사용 시 직접 필요 없을 수 있
 import pandas as pd
 import altair as alt
 import gcsfs # Google Cloud Storage (gs://) 경로 사용을 위해 필요
-import json
-from google.oauth2 import service_account
+# import json
+# from google.oauth2 import service_account
 
-credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
+# credentials = service_account.Credentials.from_service_account_info(st.secrets["google"])
 
 
-### 함수 사용으로 차트별 반복되는 코드를 간소화하고 가독성을 높였음 ###
-### 연도 선택 후 학교급별 그룹형 차트 표시 방식에서 학교급 선택 후 연도별 그룹형 차트 표시로 수정하였음 ###
+# ### 함수 사용으로 차트별 반복되는 코드를 간소화하고 가독성을 높였음 ###
+# ### 연도 선택 후 학교급별 그룹형 차트 표시 방식에서 학교급 선택 후 연도별 그룹형 차트 표시로 수정하였음 ###
 
-# Streamlit 페이지 기본 설정
-st.set_page_config(page_title="Lunch", page_icon="🍱")
-st.title("17개 시도별 급식 관련 자료 분석")
-st.subheader("📊 학교알리미 공공데이터 자료를 활용한 집계")
-st.write(" ")
+# # Streamlit 페이지 기본 설정
+# st.set_page_config(page_title="Lunch", page_icon="🍱")
+# st.title("17개 시도별 급식 관련 자료 분석")
+# st.subheader("📊 학교알리미 공공데이터 자료를 활용한 집계")
+# st.write(" ")
+
+# # --- 데이터 로드 함수 (GCS에서 파일 읽기) ---
+# @st.cache_data
+# def load_data_from_gcs(gcs_uri):
+#     """GCS URI로부터 데이터를 로드합니다."""
+#     try:
+#         # secrets["google"] → JSON 문자열로 변환
+#         service_account_info = json.loads(json.dumps(dict(st.secrets["google"])))
+
+#         # GCSFS 객체 생성 (여기서 문자열로 전달)
+#         fs = gcsfs.GCSFileSystem(token=service_account_info)
+
+#         # 파일 열기 및 읽기
+#         with fs.open(gcs_uri, "rb") as f:
+#             df = pd.read_csv(f)
+#         return df
+#     except FileNotFoundError:
+#         st.error(f"오류: 지정된 GCS 경로에 파일이 없습니다: '{gcs_uri}'")
+#         return None
+#     except Exception as e:
+#         st.error(f"GCS에서 파일을 읽는 중 오류 발생: {e}")
+#         return None
 
 # --- 데이터 로드 함수 (GCS에서 파일 읽기) ---
-@st.cache_data
+# Streamlit 앱 성능을 위해 데이터 로드는 캐싱하는 것이 좋습니다.
+#@st.cache_data
 def load_data_from_gcs(gcs_uri):
     """GCS URI로부터 데이터를 로드합니다."""
     try:
-        # secrets["google"] → JSON 문자열로 변환
-        service_account_info = json.loads(json.dumps(dict(st.secrets["google"])))
-
-        # GCSFS 객체 생성 (여기서 문자열로 전달)
-        fs = gcsfs.GCSFileSystem(token=service_account_info)
-
-        # 파일 열기 및 읽기
-        with fs.open(gcs_uri, "rb") as f:
-            df = pd.read_csv(f)
+        # gcsfs가 설치되어 있으면 pandas가 자동으로 gs:// 경로를 처리합니다.
+        df = pd.read_csv(gcs_uri)
         return df
     except FileNotFoundError:
         st.error(f"오류: 지정된 GCS 경로에 파일이 없습니다: '{gcs_uri}'")
@@ -144,10 +160,12 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
     )
 
 
-   # --- 데이터 필터링 및 준비 (집계 로직 포함) ---
-    if selected_variable_name and selected_class_type is not None and selected_plot_years:
+    # --- 데이터 필터링 및 준비 (단수 학교급 선택 로직 반영) ---
+    # 필요한 모든 선택이 완료되었을 경우에만 시각화 로직 실행
+    if selected_variable_name and selected_class_type is not None and selected_plot_years: # 데이터 변수, 학교급(하나), 연도(하나 이상) 선택됨
         try:
-            st.write(f"### {selected_variable_name} by {province_col} ({(selected_class_type)} - {', '.join(selected_plot_years)}년)")
+            # 제목에 선택된 학교급(단수)와 연도들(복수) 표시
+            st.write(f"### {selected_variable_name} by {province_col} ({selected_class_type} - {', '.join(selected_plot_years)}년)")
 
             # 1. 선택된 연도로 데이터 1차 필터링
             df_filtered_by_year = df[df[year_col].astype(str).isin(selected_plot_years)].copy()
@@ -159,89 +177,70 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
             df_process.dropna(subset=['값', province_col, class_type_col, year_col], inplace=True)
 
 
-            # 3. 선택된 학교급(하나)에 따라 최종 시각화 데이터프레임 구성 및 **집계**
+            # 3. 선택된 학교급(하나)에 따라 최종 시각화 데이터프레임 구성
             df_to_plot = pd.DataFrame()
             dataframes_to_concat = []
 
-            # --- 데이터 필터링 및 집계 로직 시작 (수정 부분) ---
-
-            df_filtered_for_aggregation = pd.DataFrame() # 집계 대상 데이터를 담을 임시 DF
-
+            # 사용자가 '전체'를 선택했다면, '전체' 데이터 생성 및 추가
             if selected_class_type == '전체':
-                # '전체' 선택 시: 개별 학교급 타입 데이터만 선택
-                specific_types_in_processed_data_for_total = [
-                    item for item in specific_class_types
-                    if item in df_process[class_type_col].unique()
-                ]
-                if specific_types_in_processed_data_for_total:
-                    df_filtered_for_aggregation = df_process[
-                        df_process[class_type_col].isin(specific_types_in_processed_data_for_total)
-                    ].copy()
-                else:
-                     st.warning(f"경고 ({title_text}): 데이터에 전체 합계/평균 계산을 위한 개별 학급구분 타입({specific_class_types})의 유효한 값이 없어 '전체' 값을 계산할 수 없습니다.")
-                     # 이 경우 df_filtered_for_aggregation은 비어있음
+                 # '전체'가 선택된 경우: 개별 학교급들의 합계 또는 평균 계산
+                 specific_types_in_processed_data_for_total = [
+                      item for item in specific_class_types
+                      if item in df_process[class_type_col].unique()
+                 ]
+                 if specific_types_in_processed_data_for_total:
+                      df_specific_types_only_for_total = df_process[
+                           df_process[class_type_col].isin(specific_types_in_processed_data_for_total)
+                      ].copy()
 
-            else:
-                # 개별 학교급 선택 시: 해당 학교급 데이터만 선택
-                if selected_class_type in df_process[class_type_col].unique():
-                     df_filtered_for_aggregation = df_process[
-                          df_process[class_type_col] == selected_class_type
-                     ].copy()
-                else:
-                     st.warning(f"경고 ({title_text}): 선택된 학교급('{selected_class_type}')이 데이터에 존재하지 않습니다.")
-                     # 이 경우 df_filtered_for_aggregation은 비어있음
+                      if not df_specific_types_only_for_total.empty:
+                           # 시도교육청별, 연도별로 그룹화하여 합계/평균 계산
+                           # 차트 1, 2는 합계, 차트 3, 4는 평균 (사용자 요청 반영)
+                           if chart_num == 3 or chart_num == 4:
+                               df_total = df_specific_types_only_for_total.groupby([province_col, year_col])['값'].mean().reset_index()
+                               # --- 여기에 평균 계산 안내 메시지 추가 ---
+                               st.info("참고: 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **평균**으로 계산됩니다.")
 
-
-            # 이제 df_filtered_for_aggregation에 집계할 대상 데이터만 있습니다 (전체 또는 개별 학교급)
-            # 이 데이터가 비어있지 않으면 집계를 수행합니다.
-            if not df_filtered_for_aggregation.empty:
-
-                 # --- 이제 집계를 수행 ---
-                 # 개별 학교급 선택 시에도 여기(else 블록)의 집계 로직을 타게 됩니다.
-                 if selected_class_type == '전체':
-                      # '전체' 선택 시: 시도교육청, 연도별로 그룹화하여 집계
-                      groupby_cols = [province_col, year_col]
-                      # Chart 1은 합계, Chart 2, 3, 4는 평균 (데이터 성격 및 사용자 요구 반영)
-                      if chart_num in [2, 3, 4]: # Chart 2, 3, 4는 평균
-                          df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].mean().reset_index()
-                          st.info(f"참고 ({title_text}): 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **평균**으로 계산됩니다.") # 메시지도 수정
-                      else: # 차트 1 (학생수 합계)
-                           df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].sum().reset_index()
-                           st.info(f"참고 ({title_text}): 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **합계**로 계산됩니다.") # 메시지도 수정
-
-                      df_aggregated[class_type_col] = '전체' # '전체' 학급구분 값 추가
+                           else: # 차트 1, 2
+                               df_total = df_specific_types_only_for_total.groupby([province_col, year_col])['값'].sum().reset_index()
+                               # --- 여기에 합계 계산 안내 메시지 추가 ---
+                               st.info("참고: 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **합계**로 계산됩니다.")
 
 
+                           df_total[class_type_col] = '전체' # '전체' 학급구분 값 추가
+                           dataframes_to_concat.append(df_total)
+                      else:
+                           st.warning(f"경고: 선택된 연도({', '.join(selected_plot_years)}) 데이터에 전체 합계/평균 계산을 위한 개별 학교급 타입({specific_class_types})의 유효한 값이 없어 '전체' 값을 계산할 수 없습니다.")
+
+
+            # 사용자가 개별 학교급 타입을 선택했다면 해당 데이터 추가
+            # selected_class_type 변수는 이미 선택된 단일 값입니다.
+            elif selected_class_type != '전체':
+                 # 선택된 특정 학교급이 실제 데이터(df_process)에 있는지 확인
+                 if selected_class_type in df_process[class_type_col].unique():
+                      # --- 여기서 해당 학교급 데이터만 필터링하고 dataframes_to_concat에 추가 ---
+                      df_specific_selected = df_process[
+                           df_process[class_type_col] == selected_class_type # <-- Filter using == for single value
+                      ].copy()
+                      if not df_specific_selected.empty:
+                           dataframes_to_concat.append(df_specific_selected)
+                      else:
+                           st.warning(f"경고: 선택된 연도({', '.join(selected_plot_years)}) 데이터에 선택된 학교급('{selected_class_type}')의 유효한 값이 없습니다.")
                  else:
-                      # 개별 학교급 선택 시: 시도교육청, 연도, 학교급별로 그룹화하여 집계 (동일 조합 여러 행 합산/평균)
-                      groupby_cols = [province_col, year_col, class_type_col]
-                       # Chart 1, 2는 합계, Chart 3, 4는 평균
-                      if chart_num in [1, 2]: # Chart 1, 2는 합계
-                           df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].sum().reset_index()
-                           # st.info(f"참고 ({title_text}): 선택된 학교급({selected_class_type}) 데이터의 **합계**로 계산됩니다.") # 필요시 안내
-                      elif chart_num in [3, 4]: # Chart 3, 4는 평균
-                           df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].mean().reset_index()
-                           # st.info(f"참고 ({title_text}): 선택된 학교급({selected_class_type}) 데이터의 **평균**으로 계산됩니다.") # 필요시 안내
-                      else: # 예외 처리 또는 기본값
-                           df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].sum().reset_index() # 기본 합계
-                           st.warning(f"경고 ({title_text}): 차트 번호 {chart_num}에 대한 집계 방식이 명시되지 않아 합계로 계산됩니다.")
+                     st.warning(f"경고: 선택된 학교급('{selected_class_type}')이 데이터에 존재하지 않습니다.")
 
 
-                 # 집계된 데이터를 시각화 데이터 목록에 추가
-                 dataframes_to_concat.append(df_aggregated)
-
-
-            # 구성된 데이터프레임들을 하나로 합침 (이 시점에서는 항상 하나 또는 비어있음)
+            # 구성된 데이터프레임들을 하나로 합침
             if dataframes_to_concat:
-                df_plot = pd.concat(dataframes_to_concat, ignore_index=True)
+                df_to_plot = pd.concat(dataframes_to_concat, ignore_index=True)
 
-                # 최종 정리 (이미 집계되었으므로 중복 제거는 불필요)
-                df_plot = df_plot.dropna(subset=['값', province_col, class_type_col, year_col]).copy()
+                # 최종 정리 (혹시 모를 중복 등 제거)
+                # 시도교육청, 연도, 학급구분 조합으로 중복 제거 (학교급은 하나만 있으므로 사실상 시도교육청, 연도 조합)
+                df_plot = df_to_plot.dropna(subset=['값', province_col, class_type_col, year_col]).copy()
+                df_plot = df_plot.drop_duplicates(subset=[province_col, year_col, class_type_col]).copy()
 
             else:
-                df_plot = pd.DataFrame() # 시각화할 데이터 없음
-
-            # --- 데이터 필터링 및 집계 로직 끝 (수정 부분) ---
+                 df_plot = pd.DataFrame() # 시각화할 데이터 없음
 
 
             # --- 시각화 (Altair 그룹형 막대 그래프 - 연도별 그룹핑) ---
