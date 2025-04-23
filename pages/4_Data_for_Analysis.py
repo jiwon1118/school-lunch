@@ -41,7 +41,6 @@ def load_data_from_gcs(gcs_uri):
         return None
 
 
-
 # --- 차트 생성 함수 (새로운 로직 반영) ---
 def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_col, selectable_years, y_axis_variables, specific_class_types, class_type_options, title_text):
     """
@@ -202,10 +201,10 @@ def render_chart_section(chart_num, gcs_uri, province_col, year_col, class_type_
                       # '전체' 선택 시: 시도교육청, 연도별로 그룹화하여 집계
                       groupby_cols = [province_col, year_col]
                       # Chart 1은 합계, Chart 2, 3, 4는 평균 (데이터 성격 및 사용자 요구 반영)
-                      if chart_num in [2, 3, 4]: # Chart 2, 3, 4는 평균
+                      if chart_num in [3, 4]: # Chart 3, 4는 평균
                           df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].mean().reset_index()
                           st.info(f"참고 ({title_text}): 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **평균**으로 계산됩니다.") # 메시지도 수정
-                      else: # 차트 1 (학생수 합계)
+                      else: # 차트 1, 2(학생수 합계)
                            df_aggregated = df_filtered_for_aggregation.groupby(groupby_cols)['값'].sum().reset_index()
                            st.info(f"참고 ({title_text}): 선택된 학교급이 '전체'일 경우, 개별 학교급 데이터의 **합계**로 계산됩니다.") # 메시지도 수정
 
