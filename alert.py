@@ -73,7 +73,6 @@ def send_to_discord(files, commits, version):
 **커밋 내역**:
 ```text
 {commit_log}
-{commits if commits else "없음"}
 ```
 """
     requests.post(WEBHOOK_URL, json={"content": content})
