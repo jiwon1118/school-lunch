@@ -1,0 +1,63 @@
+import subprocess
+import requests
+import toml
+import sys
+
+WEBHOOK_URL = "https://discord.com/api/webhooks/1363139985913544734/4vSVU5E46MbsA16MxrlCO8p3KVJmhWt7szQx05-TZoZMz4AMqLv1Utw5Kyfsn9QsGOR4"
+
+# 1. git add 된 파일 목록 가져오기
+def get_added_files():
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--cached"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout.strip().splitlines()
+
+# 2. push되지 않은 커밋 로그 (현재 브랜치 기준)
+def get_commits():
+    try:
+        result = subprocess.run(
+            ["git", "log", "@{u}..HEAD", "--pretty=format:- %s%n %b"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # upstream이 없는 경우
+        print("❌ 업스트림 브랜치가 설정되어 있지 않아 push되지 않은 커밋을 확인할 수 없습니다.")
+        print("💡 `git push -u origin <branch>`로 upstream을 먼저 설정해주세요.")
+        sys.exit(1)
+        
+
+# 3. pyproject.toml에서 버전 가져오기
+def get_version_from_pyproject():
+    try:
+        with open("pyproject.toml", "r") as f:
+            data = toml.load(f)
+            return data.get("project", {}).get("version", "unknown")
+    except FileNotFoundError:
+        return "pyproject.toml not found"
+
+# 4. 디스코드 전송 함수
+def send_to_discord(files, commits, version):
+    content = f"""🚀 **패치노트 자동 푸시 알림**
+
+📦 **버전**: `{version}`
+
+📁 **업데이트된 파일 목록**:
+{chr(10).join(files)}
+
+📝 **커밋 내역**:
+{commits if commits else "없음"}
+
+"""
+    requests.post(WEBHOOK_URL, json={"content": content})
+
+# 5. 실행
+if __name__ == "__main__":
+    added_files = get_added_files()
+    commits = get_commits()
+    version = get_version_from_pyproject()
+    send_to_discord(added_files, commits, version)
