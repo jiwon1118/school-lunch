@@ -65,7 +65,9 @@ def send_to_discord(files, commits, version):
 **버전**: `{version}`
 
 **추가, 수정 파일 목록**:
+```
 {chr(10).join(files)}
+```
 
 **커밋 내역**:
 ```
