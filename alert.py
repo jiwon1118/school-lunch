@@ -33,12 +33,12 @@ def get_added_files():
 def get_commits():
     try:
         result = subprocess.run(
-            ["git", "log", "@{u}..HEAD", "--pretty=format:- %s%n %b", "--reverse"],
+            ["git", "log", "@{u}..HEAD", "--pretty=format:- %s%n%b", "--reverse"],
             capture_output=True,
             text=True,
             check=True
         )
-        formatted_commits = result.stdout.strip().replace("\n", "\\n")
+        #formatted_commits = result.stdout.strip().replace("\n", "\\n")
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         # upstream이 없는 경우
@@ -68,8 +68,9 @@ def send_to_discord(files, commits, version):
 {chr(10).join(files)}
 
 **커밋 내역**:
+```
 {commits if commits else "없음"}
-
+```
 """
     requests.post(WEBHOOK_URL, json={"content": content})
 
