@@ -12,13 +12,28 @@ def get_added_files():
         capture_output=True,
         text=True
     )
-    return result.stdout.strip().splitlines()
+
+    if not result.stdout.strip():
+        result = subprocess.run(
+            ["git", "status", "--short"],
+            capture_output=True,
+            text=True
+        )
+        files = [
+            line.split()[-1] for line in result.stdout.strip().splitlines() if line.startswith("A") or line.startswith("M")
+        ]
+    else:
+        files = result.stdout.strip().splitlines()
+    return files
+
+
+
 
 # 2. push되지 않은 커밋 로그 (현재 브랜치 기준)
 def get_commits():
     try:
         result = subprocess.run(
-            ["git", "log", "@{u}..HEAD", "--pretty=format:- %s%n %b"],
+            ["git", "log", "@{u}..HEAD", "--pretty=format:- %s%n %b", "--reverse"],
             capture_output=True,
             text=True,
             check=True
