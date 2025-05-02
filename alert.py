@@ -58,6 +58,7 @@ def get_version_from_pyproject():
 
 # 4. 디스코드 전송 함수
 def send_to_discord(files, commits, version):
+    commit_log = commits if commits else "없음"
     content = f"""
 ---------------------------------------------------------------------
 🚀*패치노트 자동 푸시 알림*
@@ -70,7 +71,8 @@ def send_to_discord(files, commits, version):
 ```
 
 **커밋 내역**:
-```
+```text
+{commit_log}
 {commits if commits else "없음"}
 ```
 """
