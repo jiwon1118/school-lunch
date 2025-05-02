@@ -38,6 +38,7 @@ def get_commits():
             text=True,
             check=True
         )
+        formatted_commits = result.stdout.strip().replace("\n", "\\n")
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         # upstream이 없는 경우
